@@ -2,6 +2,7 @@ import { clearFragmentMount, loadHtmlFragment } from "/static/assets/js/shared/r
 
 export const ADMIN_ROUTE_FRAGMENTS = {
   login: { fragment: "/static/admin/pages/login.html", mountRef: "loginMount" },
+  dashboard: { fragment: "/static/admin/pages/dashboard.html", mountRef: "pageMount" },
   quizzes: { fragment: "/static/admin/pages/quizzes.html", mountRef: "pageMount" },
   "quiz-detail": { fragment: "/static/admin/pages/quiz-detail.html", mountRef: "pageMount" },
   candidates: { fragment: "/static/admin/pages/candidates.html", mountRef: "pageMount" },
@@ -36,7 +37,7 @@ export function createAdminRouterModule() {
     },
 
     currentAdminRouteFragment() {
-      return ADMIN_ROUTE_FRAGMENTS[String(this.route?.name || "").trim()] || ADMIN_ROUTE_FRAGMENTS.quizzes;
+      return ADMIN_ROUTE_FRAGMENTS[String(this.route?.name || "").trim()] || ADMIN_ROUTE_FRAGMENTS.dashboard;
     },
 
     async renderCurrentRoute() {
@@ -61,7 +62,10 @@ export function createAdminRouterModule() {
       if (path === "/admin/login") {
         return { name: "login", path, title: "管理员登录", section: "Login", params: {} };
       }
-      if (path === "/admin" || path === "/admin/quizzes") {
+      if (path === "/admin" || path === "/admin/dashboard") {
+        return { name: "dashboard", path: "/admin/dashboard", title: "总览", section: "Dashboard", params: {} };
+      }
+      if (path === "/admin/quizzes") {
         return { name: "quizzes", path: "/admin/quizzes", title: "测验", section: "Quizzes", params: {} };
       }
       let match = path.match(/^\/admin\/(?:quizzes|exams)\/([^/]+)$/);
@@ -109,7 +113,7 @@ export function createAdminRouterModule() {
       if (path === "/admin/mcp") {
         return { name: "mcp", path, title: "MCP", section: "MCP", params: {} };
       }
-      return { name: "quizzes", path: "/admin/quizzes", title: "测验", section: "Quizzes", params: {} };
+      return { name: "dashboard", path: "/admin/dashboard", title: "总览", section: "Dashboard", params: {} };
     },
 
     async refreshSession() {
@@ -140,7 +144,7 @@ export function createAdminRouterModule() {
 
       let nextRoute = this.resolveRoute(pathname);
       if (this.session.authenticated && nextRoute.name === "login") {
-        nextRoute = this.resolveRoute("/admin/quizzes");
+        nextRoute = this.resolveRoute("/admin/dashboard");
         replace = true;
       }
 
@@ -178,6 +182,9 @@ export function createAdminRouterModule() {
       }
 
       switch (this.route.name) {
+        case "dashboard":
+          await this.loadDashboard();
+          break;
         case "quizzes":
           await this.loadQuizzes();
           break;

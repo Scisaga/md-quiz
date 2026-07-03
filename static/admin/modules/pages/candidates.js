@@ -1,16 +1,86 @@
-import { RESUME_PARSE_META, RESUME_PHASE_META, createCandidateResumeUploadState, createCandidateResumeReparseState } from "../constants.js";
+import { RESUME_PARSE_META, RESUME_PHASE_META, createCandidateResumeUploadState, createCandidateResumeReparseState } from"../constants.js";
 
 export function createAdminCandidatesModule() {
   return {
     isSupportedResumeFile(file) {
-      const name = String(file?.name || "").trim().toLowerCase();
+      const name = String(file?.name ||"").trim().toLowerCase();
       if (!name) return false;
-      return [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"].some((ext) => name.endsWith(ext));
+      return [".pdf",".png",".jpg",".jpeg",".webp",".bmp",".tif",".tiff"].some((ext) => name.endsWith(ext));
+    },
+
+    candidateFileIsImage(mime, filename) {
+      const type = String(mime ||"").trim().toLowerCase();
+      if (type.startsWith("image/")) return true;
+      const name = String(filename ||"").trim().toLowerCase();
+      return [".png",".jpg",".jpeg",".webp",".gif",".bmp",".tif",".tiff"].some((ext) => name.endsWith(ext));
+    },
+
+    candidateFileVersion(...parts) {
+      return parts.map((part) => String(part ||"").trim()).filter(Boolean).join(":");
+    },
+
+    candidateResumeUrl() {
+      const candidate = this.candidateDetail?.candidate || {};
+      const candidateId = Number(candidate.id || 0);
+      if (!candidateId || !candidate.resume_filename) return"";
+      const version = this.candidateFileVersion(candidate.resume_filename, candidate.resume_size, candidate.resume_parsed_at);
+      const query = version ? `?v=${encodeURIComponent(version)}` :"";
+      return `/api/admin/candidates/${encodeURIComponent(candidateId)}/resume${query}`;
+    },
+
+    candidatePreviewUrl(url) {
+      const value = String(url ||"").trim();
+      if (!value) return"";
+      return `${value}${value.includes("?") ?"&" :"?"}preview=1`;
+    },
+
+    candidateBusinessCardUrl() {
+      const candidate = this.candidateDetail?.candidate || {};
+      const candidateId = Number(candidate.id || 0);
+      if (!candidateId || !candidate.business_card_filename) return"";
+      const version = this.candidateFileVersion(candidate.business_card_filename, candidate.business_card_size, candidate.business_card_uploaded_at);
+      const query = version ? `?v=${encodeURIComponent(version)}` :"";
+      return `/api/admin/candidates/${encodeURIComponent(candidateId)}/business-card${query}`;
+    },
+
+    candidateResumeIsImage() {
+      const candidate = this.candidateDetail?.candidate || {};
+      return Boolean(
+        candidate.resume_filename
+        && this.candidateFileIsImage(candidate.resume_mime, candidate.resume_filename),
+      );
+    },
+
+    candidateResumePreviewUrl() {
+      return this.candidateResumeIsImage() ? this.candidatePreviewUrl(this.candidateResumeUrl()) :"";
+    },
+
+    candidateBusinessCardPreviewUrl() {
+      return this.candidateBusinessCardIsImage() ? this.candidatePreviewUrl(this.candidateBusinessCardUrl()) :"";
+    },
+
+    openCandidateMaterialPreview(url, title) {
+      const value = String(url ||"").trim();
+      if (!value) return;
+      const label = String(title ||"").trim() ||"资料预览";
+      this.candidateMaterialPreview = { open: true, url: value, title: label };
+    },
+
+    closeCandidateMaterialPreview() {
+      this.candidateMaterialPreview = { open: false, url:"", title:"" };
+    },
+
+    candidateBusinessCardIsImage() {
+      const candidate = this.candidateDetail?.candidate || {};
+      return Boolean(
+        candidate.business_card_filename
+        && this.candidateFileIsImage(candidate.business_card_mime, candidate.business_card_filename),
+      );
     },
 
     formatFileSize(value) {
       const size = Number(value || 0);
-      if (!Number.isFinite(size) || size <= 0) return "暂无记录";
+      if (!Number.isFinite(size) || size <= 0) return"暂无记录";
       if (size < 1024) return `${Math.round(size)} B`;
       if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
       return `${(size / 1024 / 1024).toFixed(1)} MB`;
@@ -19,12 +89,12 @@ export function createAdminCandidatesModule() {
     candidateResumeParsedData() {
       const details = this.candidateDetail?.resume_parsed?.details;
       const data = details?.data;
-      return data && typeof data === "object" ? data : {};
+      return data && typeof data ==="object" ? data : {};
     },
 
     candidateResumeStatus() {
-      const status = String(this.candidateDetail?.profile?.details_status || this.candidateDetail?.resume_parsed?.details?.status || "").trim().toLowerCase();
-      return status || "empty";
+      const status = String(this.candidateDetail?.profile?.details_status || this.candidateDetail?.resume_parsed?.details?.status ||"").trim().toLowerCase();
+      return status ||"empty";
     },
 
     candidateResumeStatusMeta() {
@@ -42,77 +112,77 @@ export function createAdminCandidatesModule() {
 
     candidateResumeMethodLabel() {
       const method = this.candidateDetail?.resume_parsed?.method;
-      if (!method || typeof method !== "object") return "";
+      if (!method || typeof method !=="object") return"";
       const labels = {
-        llm_attachment: "附件推理",
-        llm: "模型抽取",
-        fast: "规则识别",
+        llm_attachment:"附件推理",
+        llm:"模型抽取",
+        fast:"规则识别",
       };
       const entries = Object.entries(method)
-        .map(([key, value]) => [String(key || "").trim(), String(value || "").trim()])
+        .map(([key, value]) => [String(key ||"").trim(), String(value ||"").trim()])
         .filter(([key, value]) => key && value);
-      if (!entries.length) return "";
+      if (!entries.length) return"";
       const uniqueValues = [...new Set(entries.map(([, value]) => value))];
       if (uniqueValues.length === 1) {
         return labels[uniqueValues[0]] || uniqueValues[0];
       }
       return entries
         .map(([key, value]) => {
-          const keyLabel = key === "identity" ? "身份" : key === "name" ? "姓名" : key === "details" ? "详情" : key;
+          const keyLabel = key ==="identity" ?"身份" : key ==="name" ?"姓名" : key ==="details" ?"详情" : key;
           return `${keyLabel}:${labels[value] || value}`;
         })
-        .join(" / ");
+        .join(" /");
     },
 
     candidateResumeConfidenceItems() {
       const confidence = this.candidateDetail?.resume_parsed?.confidence;
-      if (!confidence || typeof confidence !== "object") return [];
+      if (!confidence || typeof confidence !=="object") return [];
       const items = [
-        { label: "姓名置信度", value: Number(confidence.name || 0) },
-        { label: "手机置信度", value: Number(confidence.phone || 0) },
+        { label:"姓名置信度", value: Number(confidence.name || 0) },
+        { label:"手机置信度", value: Number(confidence.phone || 0) },
       ];
       return items.filter((item) => Number.isFinite(item.value) && item.value > 0);
     },
 
     candidateResumeSummary() {
-      const profileSummary = String(this.candidateDetail?.profile?.evaluation_llm || "").trim();
+      const profileSummary = String(this.candidateDetail?.profile?.evaluation_llm ||"").trim();
       if (profileSummary) return profileSummary;
-      return String(this.candidateResumeParsedData().summary || "").trim();
+      return String(this.candidateResumeParsedData().summary ||"").trim();
     },
 
     candidateResumeError() {
-      return String(this.candidateDetail?.profile?.details_error || this.candidateDetail?.resume_parsed?.details?.error || "").trim();
+      return String(this.candidateDetail?.profile?.details_error || this.candidateDetail?.resume_parsed?.details?.error ||"").trim();
     },
 
     candidateResumeBasicFacts() {
       const data = this.candidateResumeParsedData();
       const candidate = this.candidateDetail?.candidate || {};
       const facts = [
-        { label: "姓名", value: String(candidate.name || "").trim() },
-        { label: "手机号", value: String(candidate.phone || "").trim(), mono: true },
-        { label: "性别", value: String(this.candidateDetail?.profile?.gender || data.gender || "").trim() },
-        { label: "最高学历", value: String(this.candidateDetail?.profile?.highest_education || data.highest_education || "").trim() },
-        { label: "邮箱", value: String(this.candidateDetail?.profile?.email || (Array.isArray(data.emails) ? data.emails[0] || "" : "")).trim() },
-        { label: "经验年限", value: this.formatExperienceYears(data.experience_years) },
+        { label:"姓名", value: String(candidate.name ||"").trim() },
+        { label:"手机号", value: String(candidate.phone ||"").trim(), mono: true },
+        { label:"性别", value: String(this.candidateDetail?.profile?.gender || data.gender ||"").trim() },
+        { label:"最高学历", value: String(this.candidateDetail?.profile?.highest_education || data.highest_education ||"").trim() },
+        { label:"邮箱", value: String(this.candidateDetail?.profile?.email || (Array.isArray(data.emails) ? data.emails[0] ||"" :"")).trim() },
+        { label:"经验年限", value: this.formatExperienceYears(data.experience_years) },
       ];
       return facts.filter((item) => item.value);
     },
 
     candidateResumeEducations() {
       const educations = this.candidateDetail?.profile?.educations;
-      return Array.isArray(educations) ? educations.filter((item) => item && typeof item === "object") : [];
+      return Array.isArray(educations) ? educations.filter((item) => item && typeof item ==="object") : [];
     },
 
     candidateResumeTags(key) {
       const raw = this.candidateResumeParsedData()[key];
       return Array.isArray(raw)
-        ? raw.map((item) => String(item || "").trim()).filter(Boolean)
+        ? raw.map((item) => String(item ||"").trim()).filter(Boolean)
         : [];
     },
 
     candidateResumeEnglishItems() {
       const english = this.candidateDetail?.profile?.english;
-      if (!english || typeof english !== "object") return [];
+      if (!english || typeof english !=="object") return [];
       const items = [];
       const pushItem = (label, value) => {
         const score = Number(value);
@@ -128,12 +198,12 @@ export function createAdminCandidatesModule() {
       const rows = this.candidateResumeParsedData().work_experiences;
       if (Array.isArray(rows) && rows.length) {
         return rows
-          .filter((item) => item && typeof item === "object")
+          .filter((item) => item && typeof item ==="object")
           .map((item) => ({
-            title: [String(item.company || "").trim(), String(item.title || "").trim()].filter(Boolean).join(" · "),
-            period: String(item.period || "").trim(),
+            title: [String(item.company ||"").trim(), String(item.title ||"").trim()].filter(Boolean).join(" ·"),
+            period: String(item.period ||"").trim(),
             bullets: Array.isArray(item.description)
-              ? item.description.map((bullet) => String(bullet || "").trim()).filter(Boolean)
+              ? item.description.map((bullet) => String(bullet ||"").trim()).filter(Boolean)
               : [],
           }))
           .filter((item) => item.title || item.period || item.bullets.length);
@@ -145,12 +215,12 @@ export function createAdminCandidatesModule() {
       const rows = this.candidateDetail?.profile?.projects;
       if (Array.isArray(rows) && rows.length) {
         return rows
-          .filter((item) => item && typeof item === "object")
+          .filter((item) => item && typeof item ==="object")
           .map((item) => ({
-            title: [String(item.name || "").trim(), String(item.role || "").trim()].filter(Boolean).join(" · "),
-            period: String(item.period || "").trim(),
+            title: [String(item.name ||"").trim(), String(item.role ||"").trim()].filter(Boolean).join(" ·"),
+            period: String(item.period ||"").trim(),
             bullets: Array.isArray(item.description)
-              ? item.description.map((bullet) => String(bullet || "").trim()).filter(Boolean)
+              ? item.description.map((bullet) => String(bullet ||"").trim()).filter(Boolean)
               : [],
           }))
           .filter((item) => item.title || item.period || item.bullets.length);
@@ -161,17 +231,17 @@ export function createAdminCandidatesModule() {
     candidateResumeExperienceBlocks(kind) {
       const blocks = this.candidateDetail?.profile?.experience_blocks;
       if (!Array.isArray(blocks)) return [];
-      const expectedKind = String(kind || "").trim().toLowerCase();
+      const expectedKind = String(kind ||"").trim().toLowerCase();
       return blocks
-        .filter((item) => item && typeof item === "object")
+        .filter((item) => item && typeof item ==="object")
         .filter((item) => {
-          const currentKind = String(item.kind || "").trim().toLowerCase();
+          const currentKind = String(item.kind ||"").trim().toLowerCase();
           return expectedKind ? currentKind === expectedKind : true;
         })
         .map((item) => ({
-          title: String(item.title || "").trim(),
-          period: String(item.period || "").trim(),
-          bullets: String(item.body || "")
+          title: String(item.title ||"").trim(),
+          period: String(item.period ||"").trim(),
+          bullets: String(item.body ||"")
             .split(/\n+/)
             .map((line) => line.trim())
             .filter(Boolean),
@@ -181,9 +251,9 @@ export function createAdminCandidatesModule() {
 
     candidateResumeCollectionGroups() {
       const groups = [
-        { key: "awards", label: "奖项" },
-        { key: "certifications", label: "证书" },
-        { key: "publications", label: "发表" },
+        { key:"awards", label:"奖项" },
+        { key:"certifications", label:"证书" },
+        { key:"publications", label:"发表" },
       ];
       return groups
         .map((group) => ({
@@ -199,12 +269,12 @@ export function createAdminCandidatesModule() {
         ? this.candidateDetail.profile.admin_evaluations
         : [];
       adminItems.slice(0, 3).forEach((item) => {
-        const text = String(item?.text || "").trim();
+        const text = String(item?.text ||"").trim();
         if (!text) return;
         items.push({
-          label: "管理员评价",
+          label:"管理员评价",
           text,
-          meta: String(item?.at_display || item?.at || "").trim(),
+          meta: String(item?.at_display || item?.at ||"").trim(),
         });
       });
       return items;
@@ -226,7 +296,7 @@ export function createAdminCandidatesModule() {
 
     formatExperienceYears(value) {
       const number = Number(value);
-      if (!Number.isFinite(number) || number <= 0) return "";
+      if (!Number.isFinite(number) || number <= 0) return"";
       if (Number.isInteger(number)) {
         return `${number} 年`;
       }
@@ -234,7 +304,7 @@ export function createAdminCandidatesModule() {
     },
 
     resumePhaseMeta(phase) {
-      const key = String(phase || "").trim().toLowerCase();
+      const key = String(phase ||"").trim().toLowerCase();
       return RESUME_PHASE_META[key] || RESUME_PHASE_META.idle;
     },
 
@@ -261,8 +331,8 @@ export function createAdminCandidatesModule() {
 
     candidateResumeReparseDefaultMessage() {
       return this.candidateDetail?.candidate?.resume_filename
-        ? "选择新简历后会先要求确认，再覆盖当前简历并重新解析。"
-        : "当前候选人还没有简历，选择文件后会先要求确认并开始解析。";
+        ?"选择新简历后会先要求确认，再覆盖当前简历并重新解析。"
+        :"当前候选人还没有简历，选择文件后会先要求确认并开始解析。";
     },
 
     resetCandidateResumeUploadState() {
@@ -288,9 +358,9 @@ export function createAdminCandidatesModule() {
     },
 
     scheduleCandidateResumeUploadPolling() {
-      const jobId = String(this.candidateResumeUploadState?.jobId || "").trim();
+      const jobId = String(this.candidateResumeUploadState?.jobId ||"").trim();
       if (!jobId || this.candidateResumeUploadPollTimer || !this.session.authenticated) return;
-      if (this.route.name !== "candidates") return;
+      if (this.route.name !=="candidates") return;
       this.candidateResumeUploadPollTimer = window.setTimeout(async () => {
         this.candidateResumeUploadPollTimer = null;
         await this.pollCandidateResumeUploadJob();
@@ -298,9 +368,9 @@ export function createAdminCandidatesModule() {
     },
 
     scheduleCandidateResumeReparsePolling() {
-      const jobId = String(this.candidateResumeReparseState?.jobId || "").trim();
+      const jobId = String(this.candidateResumeReparseState?.jobId ||"").trim();
       if (!jobId || this.candidateResumeReparsePollTimer || !this.session.authenticated) return;
-      if (this.route.name !== "candidate-detail") return;
+      if (this.route.name !=="candidate-detail") return;
       this.candidateResumeReparsePollTimer = window.setTimeout(async () => {
         this.candidateResumeReparsePollTimer = null;
         await this.pollCandidateResumeReparseJob();
@@ -308,29 +378,29 @@ export function createAdminCandidatesModule() {
     },
 
     async pollCandidateResumeUploadJob() {
-      const jobId = String(this.candidateResumeUploadState?.jobId || "").trim();
-      if (!jobId || this.route.name !== "candidates") return;
+      const jobId = String(this.candidateResumeUploadState?.jobId ||"").trim();
+      if (!jobId || this.route.name !=="candidates") return;
       const job = await this.api(`/api/admin/jobs/${encodeURIComponent(jobId)}`, { quiet: true });
       if (!job) return;
-      const status = String(job?.status || "").trim().toLowerCase();
-      if (["pending", "running"].includes(status)) {
+      const status = String(job?.status ||"").trim().toLowerCase();
+      if (["pending","running"].includes(status)) {
         this.scheduleCandidateResumeUploadPolling();
         return;
       }
-      if (status === "done") {
+      if (status ==="done") {
         const result = job?.result || {};
         const created = Boolean(result?.created);
         const candidateId = Number(result?.candidate_id || 0);
         this.candidateResumeUploadState = {
           ...createCandidateResumeUploadState(),
-          phase: "success",
-          fileName: String(result?.resume_filename || this.candidateResumeUploadState.fileName || ""),
-          message: created ? "已创建候选人并写入简历。" : "已更新候选人并更新简历。",
+          phase:"success",
+          fileName: String(result?.resume_filename || this.candidateResumeUploadState.fileName ||""),
+          message: created ?"已创建候选人并写入简历。" :"已更新候选人并更新简历。",
           created,
-          candidateName: String(result?.candidate_name || "").trim(),
+          candidateName: String(result?.candidate_name ||"").trim(),
           candidateId,
         };
-        this.showNotice(created ? "简历已入库并创建候选人" : "简历已入库并更新候选人");
+        this.showNotice(created ?"简历已入库并创建候选人" :"简历已入库并更新候选人");
         await this.loadCandidates({ quiet: true });
         if (candidateId > 0) {
           await this.handleRoute(`/admin/candidates/${candidateId}`);
@@ -339,24 +409,24 @@ export function createAdminCandidatesModule() {
       }
       this.candidateResumeUploadState = {
         ...createCandidateResumeUploadState(),
-        phase: "error",
+        phase:"error",
         fileName: this.candidateResumeUploadState.fileName,
-        message: "本次简历入库失败，请重新选择文件。",
-        error: String(job?.error || "简历入库失败").trim(),
+        message:"本次简历入库失败，请重新选择文件。",
+        error: String(job?.error ||"简历入库失败").trim(),
       };
     },
 
     async pollCandidateResumeReparseJob() {
-      const jobId = String(this.candidateResumeReparseState?.jobId || "").trim();
-      if (!jobId || this.route.name !== "candidate-detail") return;
+      const jobId = String(this.candidateResumeReparseState?.jobId ||"").trim();
+      if (!jobId || this.route.name !=="candidate-detail") return;
       const job = await this.api(`/api/admin/jobs/${encodeURIComponent(jobId)}`, { quiet: true });
       if (!job) return;
-      const status = String(job?.status || "").trim().toLowerCase();
-      if (["pending", "running"].includes(status)) {
+      const status = String(job?.status ||"").trim().toLowerCase();
+      if (["pending","running"].includes(status)) {
         this.scheduleCandidateResumeReparsePolling();
         return;
       }
-      if (status === "done") {
+      if (status ==="done") {
         const result = job?.result || {};
         const candidateId = Number(result?.candidate_id || this.candidateDetail?.candidate?.id || 0);
         if (candidateId > 0) {
@@ -364,26 +434,26 @@ export function createAdminCandidatesModule() {
         }
         this.candidateResumeReparseState = {
           ...createCandidateResumeReparseState(this.candidateResumeReparseDefaultMessage()),
-          phase: "success",
-          fileName: String(result?.resume_filename || this.candidateResumeReparseState.fileName || ""),
-          message: "新简历已覆盖，解析结果已刷新。",
+          phase:"success",
+          fileName: String(result?.resume_filename || this.candidateResumeReparseState.fileName ||""),
+          message:"新简历已覆盖，解析结果已刷新。",
         };
         this.showNotice("简历重新解析完成");
         return;
       }
       this.candidateResumeReparseState = {
         ...createCandidateResumeReparseState(this.candidateResumeReparseDefaultMessage()),
-        phase: "error",
+        phase:"error",
         fileName: this.candidateResumeReparseState.fileName,
-        message: "重新解析失败，请重新选择文件。",
-        error: String(job?.error || "简历重新解析失败").trim(),
+        message:"重新解析失败，请重新选择文件。",
+        error: String(job?.error ||"简历重新解析失败").trim(),
       };
     },
 
     openFilePicker(refName) {
       const input = this.$refs?.[refName];
       if (!input) return;
-      input.value = "";
+      input.value ="";
       input.click();
     },
 
@@ -397,11 +467,11 @@ export function createAdminCandidatesModule() {
 
     async createCandidate() {
       await this.api("/api/admin/candidates", {
-        method: "POST",
+        method:"POST",
         body: JSON.stringify(this.candidateForm),
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type":"application/json" },
       });
-      this.candidateForm = { name: "", phone: "" };
+      this.candidateForm = { name:"", phone:"" };
       this.showNotice("候选人创建成功");
       await this.loadCandidates({ quiet: true });
     },
@@ -417,26 +487,26 @@ export function createAdminCandidatesModule() {
       if (!this.isSupportedResumeFile(file)) {
         this.candidateResumeUploadState = {
           ...createCandidateResumeUploadState(),
-          phase: "error",
+          phase:"error",
           fileName: file.name,
-          message: "仅支持 PDF 或图片简历，请重新选择文件。",
-          error: "当前前端仅支持上传 PDF 或图片格式。",
+          message:"仅支持 PDF 或图片简历，请重新选择文件。",
+          error:"当前前端仅支持上传 PDF 或图片格式。",
         };
         return;
       }
       this.stopCandidateResumeUploadPolling();
       this.candidateResumeUploadState = {
         ...createCandidateResumeUploadState(),
-        phase: "running",
+        phase:"running",
         busy: true,
         fileName: file.name,
-        message: "正在上传简历并创建后台解析任务。",
+        message:"正在上传简历并创建后台解析任务。",
       };
       const form = new FormData();
       form.append("file", file);
       try {
         const data = await this.api("/api/admin/candidates/resume/upload-job", {
-          method: "POST",
+          method:"POST",
           body: form,
           quiet: true,
         });
@@ -446,11 +516,11 @@ export function createAdminCandidatesModule() {
         }
         this.candidateResumeUploadState = {
           ...createCandidateResumeUploadState(),
-          phase: "running",
+          phase:"running",
           busy: true,
-          jobId: String(data?.job_id || "").trim(),
+          jobId: String(data?.job_id ||"").trim(),
           fileName: String(data?.file_name || file.name),
-          message: "简历已接收，正在后台解析手机号、姓名和简历详情。",
+          message:"简历已接收，正在后台解析手机号、姓名和简历详情。",
         };
         this.showNotice("简历已接收，正在后台解析");
         if (this.candidateResumeUploadState.jobId) {
@@ -461,17 +531,17 @@ export function createAdminCandidatesModule() {
       } catch (error) {
         this.candidateResumeUploadState = {
           ...createCandidateResumeUploadState(),
-          phase: "error",
+          phase:"error",
           fileName: file.name,
-          message: "本次简历入库失败，请重新选择文件。",
-          error: error.message || "简历入库失败",
+          message:"本次简历入库失败，请重新选择文件。",
+          error: error.message ||"简历入库失败",
         };
       }
     },
 
     async loadCandidateDetail(candidateId) {
       this.candidateDetail = await this.api(`/api/admin/candidates/${candidateId}`);
-      this.candidateEvaluation = "";
+      this.candidateEvaluation ="";
       if (!this.candidateResumeReparseState.busy) {
         this.resetCandidateResumeReparseState();
       }
@@ -480,22 +550,24 @@ export function createAdminCandidatesModule() {
     async saveCandidateEvaluation() {
       const payload = { evaluation: this.candidateEvaluation };
       this.candidateDetail = await this.api(`/api/admin/candidates/${this.candidateDetail.candidate.id}/evaluation`, {
-        method: "POST",
+        method:"POST",
         body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type":"application/json" },
       });
-      this.candidateEvaluation = "";
+      this.candidateEvaluation ="";
       this.showNotice("管理员评价已保存");
     },
 
     downloadCandidateResume() {
-      if (!this.candidateDetail.candidate?.id) return;
-      window.location.href = `/api/admin/candidates/${this.candidateDetail.candidate.id}/resume`;
+      const url = this.candidateResumeUrl();
+      if (!url) return;
+      window.location.href = url;
     },
 
     downloadCandidateBusinessCard() {
-      if (!this.candidateDetail.candidate?.id || !this.candidateDetail.candidate?.business_card_filename) return;
-      window.location.href = `/api/admin/candidates/${this.candidateDetail.candidate.id}/business-card`;
+      const url = this.candidateBusinessCardUrl();
+      if (!url) return;
+      window.location.href = url;
     },
 
     openCandidateResumeReparsePicker() {
@@ -509,10 +581,10 @@ export function createAdminCandidatesModule() {
       if (!this.isSupportedResumeFile(file)) {
         this.candidateResumeReparseState = {
           ...createCandidateResumeReparseState(this.candidateResumeReparseDefaultMessage()),
-          phase: "error",
+          phase:"error",
           fileName: file.name,
-          message: "仅支持 PDF 或图片简历，请重新选择文件。",
-          error: "当前前端仅支持上传 PDF 或图片格式。",
+          message:"仅支持 PDF 或图片简历，请重新选择文件。",
+          error:"当前前端仅支持上传 PDF 或图片格式。",
           pendingFile: null,
         };
         return;
@@ -520,9 +592,9 @@ export function createAdminCandidatesModule() {
       this.stopCandidateResumeReparsePolling();
       this.candidateResumeReparseState = {
         ...createCandidateResumeReparseState(this.candidateResumeReparseDefaultMessage()),
-        phase: "confirm",
+        phase:"confirm",
         fileName: file.name,
-        message: "确认后会覆盖当前简历并重算解析结果。",
+        message:"确认后会覆盖当前简历并重算解析结果。",
         pendingFile: file,
       };
     },
@@ -538,10 +610,10 @@ export function createAdminCandidatesModule() {
       this.stopCandidateResumeReparsePolling();
       this.candidateResumeReparseState = {
         ...this.candidateResumeReparseState,
-        phase: "running",
+        phase:"running",
         busy: true,
-        error: "",
-        message: "正在上传新简历并创建后台解析任务。",
+        error:"",
+        message:"正在上传新简历并创建后台解析任务。",
       };
       const form = new FormData();
       form.append("file", file);
@@ -549,7 +621,7 @@ export function createAdminCandidatesModule() {
         const data = await this.api(
           `/api/admin/candidates/${this.candidateDetail.candidate.id}/resume/reparse-job`,
           {
-            method: "POST",
+            method:"POST",
             body: form,
             quiet: true,
           },
@@ -560,11 +632,11 @@ export function createAdminCandidatesModule() {
         }
         this.candidateResumeReparseState = {
           ...createCandidateResumeReparseState(this.candidateResumeReparseDefaultMessage()),
-          phase: "running",
+          phase:"running",
           busy: true,
-          jobId: String(data?.job_id || "").trim(),
+          jobId: String(data?.job_id ||"").trim(),
           fileName: String(data?.file_name || file.name),
-          message: "新简历已接收，正在后台重新解析。",
+          message:"新简历已接收，正在后台重新解析。",
           pendingFile: null,
         };
         this.showNotice("新简历已接收，正在后台重新解析");
@@ -576,17 +648,17 @@ export function createAdminCandidatesModule() {
       } catch (error) {
         this.candidateResumeReparseState = {
           ...createCandidateResumeReparseState(this.candidateResumeReparseDefaultMessage()),
-          phase: "error",
+          phase:"error",
           fileName: file.name,
-          message: "重新解析失败，请重新选择文件。",
-          error: error.message || "简历重新解析失败",
+          message:"重新解析失败，请重新选择文件。",
+          error: error.message ||"简历重新解析失败",
         };
       }
     },
 
     async deleteCandidate() {
       if (!window.confirm("确定删除该候选人吗？")) return;
-      await this.api(`/api/admin/candidates/${this.candidateDetail.candidate.id}`, { method: "DELETE" });
+      await this.api(`/api/admin/candidates/${this.candidateDetail.candidate.id}`, { method:"DELETE" });
       this.showNotice("候选人已删除");
       await this.handleRoute("/admin/candidates");
     },

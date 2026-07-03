@@ -1,3 +1,71 @@
 @layer components {
-  /* 页面样式入口。新页面专属规则优先补到这里。 */
+  .admin-r-repo-input {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid rgba(37, 99, 235, 0.13);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .admin-r-repo-input input {
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    padding: 0 14px;
+    outline: none;
+  }
+
+  .admin-r-timeline {
+    position: relative;
+    display: grid;
+    gap: 18px;
+    padding-left: 18px;
+  }
+
+  .admin-r-timeline::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 5px;
+    width: 1px;
+    background: rgba(37, 99, 235, 0.16);
+  }
+
+  .admin-r-timeline__item {
+    position: relative;
+  }
+
+  .admin-r-timeline__item::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: -17px;
+    width: 11px;
+    height: 11px;
+    border-radius: 999px;
+    border: 2px solid #fff;
+    background: var(--admin-brand);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+  }
+
+  .admin-r-chart-dark {
+    min-height: 300px;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, 0.2);
+    border-radius: 14px;
+    background: #020617;
+  }
+
+  .admin-r-codeblock {
+    overflow-x: auto;
+    border-radius: 14px;
+    background: #253858;
+    padding: 18px;
+    color: #e2e8f0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
 }

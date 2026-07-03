@@ -18,9 +18,9 @@
       <div class="absolute bottom-[10%] right-[10%] h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl"></div>
     </div>
 
-    <main class="min-h-screen px-4 py-4 sm:px-6 sm:py-6" x-cloak>
+    <main class="min-h-screen px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-4 sm:px-6 sm:pb-6 sm:pt-6" x-cloak>
       <div x-show="booting" class="grid min-h-[calc(100vh-2rem)] place-items-center">
-        <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-slate-950/60 px-5 py-4 text-sm text-slate-200">
+        <div class="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/60 px-5 py-4 text-sm text-slate-200">
           <span class="material-symbols-rounded animate-spin text-teal-300">progress_activity</span>
           正在恢复答题流程
         </div>
@@ -50,7 +50,7 @@
           <div class="space-y-5 sm:space-y-6">
             <p
               x-show="error"
-              class="mx-auto max-w-5xl rounded-lg border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"
+              class="mx-auto max-w-5xl rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"
               x-text="error"
             ></p>
 
@@ -64,7 +64,7 @@
         x-transition.opacity.duration.180ms
         class="pointer-events-none fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
       >
-        <div class="pointer-events-auto w-full max-w-sm rounded-2xl border border-amber-300/25 bg-slate-950/92 px-4 py-3 shadow-[0_18px_60px_rgba(2,6,23,0.4)] backdrop-blur-xl">
+        <div class="pointer-events-auto w-full max-w-sm rounded-xl border border-amber-300/25 bg-slate-950/92 px-4 py-3 shadow-[0_18px_60px_rgba(2,6,23,0.4)] backdrop-blur-xl">
           <div class="flex items-start gap-3">
             <span class="material-symbols-rounded mt-0.5 text-base text-amber-200">keyboard_return</span>
             <div class="min-w-0">

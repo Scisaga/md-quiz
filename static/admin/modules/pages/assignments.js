@@ -1,128 +1,295 @@
 export function createAdminAssignmentsModule() {
   return {
     selectedAssignmentQuiz() {
-      const quizKey = String(this.assignmentForm?.quiz_key || "").trim();
+      const quizKey = String(this.assignmentForm?.quiz_key ||"").trim();
       if (!quizKey) return null;
-      return (this.quizzes?.items || []).find((item) => String(item?.quiz_key || "").trim() === quizKey) || null;
+      return (this.quizzes?.items || []).find((item) => String(item?.quiz_key ||"").trim() === quizKey) || null;
     },
 
     selectedAssignmentCandidate() {
-      const candidateId = String(this.assignmentForm?.candidate_id || "").trim();
+      const candidateId = String(this.assignmentForm?.candidate_id ||"").trim();
       if (!candidateId) return null;
-      return (this.candidates?.items || []).find((item) => String(item?.id || "").trim() === candidateId) || null;
+      return (this.candidates?.items || []).find((item) => String(item?.id ||"").trim() === candidateId) || null;
+    },
+
+    selectedAssignmentFilterQuiz() {
+      const quizKey = String(this.filters?.assignments?.quiz_key ||"").trim();
+      if (!quizKey) return null;
+      const suggestionItems = Array.isArray(this.assignmentQuizFilterOptions?.items) ? this.assignmentQuizFilterOptions.items : [];
+      const quizItems = Array.isArray(this.quizzes?.items) ? this.quizzes.items : [];
+      const items = [...suggestionItems, ...quizItems];
+      return items.find((item) => String(item?.quiz_key ||"").trim() === quizKey) || { quiz_key: quizKey };
     },
 
     filteredAssignmentQuizzes() {
-      const query = String(this.assignmentSelect?.quiz?.query || "").trim().toLowerCase();
+      const query = String(this.assignmentSelect?.quiz?.query ||"").trim().toLowerCase();
       const items = Array.isArray(this.quizzes?.items) ? this.quizzes.items : [];
       if (!query) return items;
       return items.filter((item) => {
         const haystacks = [
-          String(item?.title || "").trim(),
-          String(item?.quiz_key || "").trim(),
-          ...(Array.isArray(item?.tags) ? item.tags.map((tag) => String(tag || "").trim()) : []),
+          String(item?.title ||"").trim(),
+          String(item?.quiz_key ||"").trim(),
+          ...(Array.isArray(item?.tags) ? item.tags.map((tag) => String(tag ||"").trim()) : []),
         ]
           .filter(Boolean)
-          .join(" ")
+          .join("")
           .toLowerCase();
         return haystacks.includes(query);
       });
     },
 
+    filteredAssignmentQuizFilterOptions() {
+      const query = String(this.assignmentFilterSelect?.quiz?.query ||"").trim();
+      const loadedQuery = String(this.assignmentQuizFilterOptions?.query ||"").trim();
+      const items = Array.isArray(this.assignmentQuizFilterOptions?.items) ? this.assignmentQuizFilterOptions.items : [];
+      if (loadedQuery === query && this.assignmentQuizFilterOptions?.loaded) {
+        return items;
+      }
+      if (!query && items.length) {
+        return items;
+      }
+      if (!query) {
+        return Array.isArray(this.quizzes?.items) ? this.quizzes.items : [];
+      }
+      return [];
+    },
+
+    assignmentQuizFilterLabel(item) {
+      const title = String(item?.title ||"").trim();
+      const quizKey = String(item?.quiz_key ||"").trim();
+      if (title && quizKey && title !== quizKey) {
+        return `${title}（${quizKey}）`;
+      }
+      return title || quizKey ||"未命名测验";
+    },
+
+    assignmentQuizFilterPlaceholder() {
+      return this.selectedAssignmentFilterQuiz() ?"搜索测验" :"全部测验 / 输入测验名或 ID";
+    },
+
+    assignmentQuizFilterOptionClass(item) {
+      const current = String(this.filters?.assignments?.quiz_key ||"").trim();
+      const itemKey = String(item?.quiz_key ||"").trim();
+      return current && current === itemKey
+        ?"border-blue-100 bg-blue-50/80 text-blue-800"
+        :"border-transparent bg-white text-slate-700 hover:bg-blue-50/70 hover:text-slate-900";
+    },
+
+    assignmentQuizFilterHeaderLabel() {
+      return String(this.assignmentFilterSelect?.quiz?.query ||"").trim() ?"检索结果" :"推荐测验";
+    },
+
+    assignmentQuizFilterEmptyLabel() {
+      return String(this.assignmentFilterSelect?.quiz?.query ||"").trim() ?"未找到匹配测验" :"暂无推荐测验";
+    },
+
     filteredAssignmentCandidates() {
-      const query = String(this.assignmentSelect?.candidate?.query || "").trim().toLowerCase();
+      const query = String(this.assignmentSelect?.candidate?.query ||"").trim().toLowerCase();
       const items = Array.isArray(this.candidates?.items) ? this.candidates.items : [];
       if (!query) return items;
       return items.filter((item) => {
         const haystacks = [
-          String(item?.name || "").trim(),
-          String(item?.phone || "").trim(),
+          String(item?.name ||"").trim(),
+          String(item?.phone ||"").trim(),
         ]
           .filter(Boolean)
-          .join(" ")
+          .join("")
           .toLowerCase();
         return haystacks.includes(query);
       });
     },
 
     assignmentSelectDisplayValue(kind) {
-      const target = kind === "candidate" ? "candidate" : "quiz";
+      const target = kind ==="candidate" ?"candidate" :"quiz";
       if (this.assignmentSelect?.[target]?.open) {
-        return String(this.assignmentSelect[target].query || "");
+        return String(this.assignmentSelect[target].query ||"");
       }
-      if (target === "quiz") {
+      if (target ==="quiz") {
         const selected = this.selectedAssignmentQuiz();
-        return selected ? String(selected.title || selected.quiz_key || "") : "";
+        return selected ? String(selected.title || selected.quiz_key ||"") :"";
       }
       const selected = this.selectedAssignmentCandidate();
-      return selected ? String(selected.name || "") : "";
+      return selected ? String(selected.name ||"") :"";
     },
 
     openAssignmentSelect(kind) {
-      const target = kind === "candidate" ? "candidate" : "quiz";
+      const target = kind ==="candidate" ?"candidate" :"quiz";
       this.assignmentSelect.quiz.open = false;
       this.assignmentSelect.candidate.open = false;
       this.assignmentSelect[target].open = true;
-      this.assignmentSelect[target].query = "";
+      this.assignmentSelect[target].query ="";
     },
 
     handleAssignmentSelectInput(kind, event) {
-      const target = kind === "candidate" ? "candidate" : "quiz";
-      const value = String(event?.target?.value || "");
+      const target = kind ==="candidate" ?"candidate" :"quiz";
+      const value = String(event?.target?.value ||"");
       this.assignmentSelect.quiz.open = false;
       this.assignmentSelect.candidate.open = false;
       this.assignmentSelect[target].open = true;
       this.assignmentSelect[target].query = value;
-      if (target === "quiz" && this.assignmentForm.quiz_key) {
-        this.assignmentForm.quiz_key = "";
+      if (target ==="quiz" && this.assignmentForm.quiz_key) {
+        this.assignmentForm.quiz_key ="";
       }
-      if (target === "candidate" && this.assignmentForm.candidate_id) {
-        this.assignmentForm.candidate_id = "";
+      if (target ==="candidate" && this.assignmentForm.candidate_id) {
+        this.assignmentForm.candidate_id ="";
       }
     },
 
     toggleAssignmentSelect(kind) {
-      const target = kind === "candidate" ? "candidate" : "quiz";
+      const target = kind ==="candidate" ?"candidate" :"quiz";
       const nextOpen = !Boolean(this.assignmentSelect?.[target]?.open);
       this.assignmentSelect.quiz.open = false;
       this.assignmentSelect.candidate.open = false;
       this.assignmentSelect[target].open = nextOpen;
       if (!nextOpen) {
-        this.assignmentSelect[target].query = "";
+        this.assignmentSelect[target].query ="";
       }
     },
 
     closeAssignmentSelect(kind) {
-      const target = kind === "candidate" ? "candidate" : "quiz";
+      const target = kind ==="candidate" ?"candidate" :"quiz";
       if (!this.assignmentSelect?.[target]) return;
       this.assignmentSelect[target].open = false;
-      this.assignmentSelect[target].query = "";
+      this.assignmentSelect[target].query ="";
     },
 
     selectAssignmentQuiz(item) {
-      this.assignmentForm.quiz_key = String(item?.quiz_key || "").trim();
+      this.assignmentForm.quiz_key = String(item?.quiz_key ||"").trim();
       this.closeAssignmentSelect("quiz");
     },
 
     clearAssignmentQuiz() {
-      this.assignmentForm.quiz_key = "";
+      this.assignmentForm.quiz_key ="";
       this.closeAssignmentSelect("quiz");
     },
 
+    openAssignmentQuizFilter() {
+      this.assignmentFilterSelect.quiz.open = true;
+      this.ensureAssignmentQuizFilterOptions();
+    },
+
+    toggleAssignmentQuizFilter() {
+      const nextOpen = !Boolean(this.assignmentFilterSelect?.quiz?.open);
+      this.assignmentFilterSelect.quiz.open = nextOpen;
+      if (!nextOpen) {
+        this.assignmentFilterSelect.quiz.query ="";
+      } else {
+        this.ensureAssignmentQuizFilterOptions();
+      }
+    },
+
+    closeAssignmentQuizFilter() {
+      if (!this.assignmentFilterSelect?.quiz) return;
+      this.assignmentFilterSelect.quiz.open = false;
+      this.assignmentFilterSelect.quiz.query ="";
+    },
+
+    async ensureAssignmentQuizFilterOptions() {
+      const query = String(this.assignmentFilterSelect?.quiz?.query ||"").trim();
+      if (String(this.assignmentQuizFilterOptions?.query ||"") === query && this.assignmentQuizFilterOptions?.loaded) {
+        return;
+      }
+      await this.loadAssignmentQuizFilterOptions(query);
+    },
+
+    scheduleAssignmentQuizFilterSearch(event = null) {
+      this.assignmentFilterSelect.quiz.open = true;
+      const rawQuery = event?.target ? event.target.value : this.assignmentFilterSelect?.quiz?.query;
+      this.assignmentFilterSelect.quiz.query = String(rawQuery ||"");
+      const query = String(rawQuery ||"").trim();
+      const previousQuery = String(this.assignmentQuizFilterOptions?.query ||"").trim();
+      this.assignmentQuizFilterOptions = {
+        ...(this.assignmentQuizFilterOptions || {}),
+        items: previousQuery === query && Array.isArray(this.assignmentQuizFilterOptions?.items)
+          ? this.assignmentQuizFilterOptions.items
+          : [],
+        loading: true,
+        loaded: false,
+        query,
+      };
+      window.clearTimeout(this.assignmentQuizFilterTimer);
+      this.assignmentQuizFilterTimer = window.setTimeout(() => {
+        this.loadAssignmentQuizFilterOptions(query);
+      }, 160);
+    },
+
+    async loadAssignmentQuizFilterOptions(query ="") {
+      const requestQuery = String(query ||"").trim();
+      const previousQuery = String(this.assignmentQuizFilterOptions?.query ||"").trim();
+      this.assignmentQuizFilterOptions = {
+        ...(this.assignmentQuizFilterOptions || {}),
+        items: previousQuery === requestQuery && Array.isArray(this.assignmentQuizFilterOptions?.items)
+          ? this.assignmentQuizFilterOptions.items
+          : [],
+        loading: true,
+        loaded: false,
+        query: requestQuery,
+      };
+      const params = new URLSearchParams();
+      if (requestQuery) {
+        params.set("q", requestQuery);
+      }
+      const data = await this.api(`/api/admin/quizzes?${params.toString()}`, { quiet: true });
+      const currentQuery = String(this.assignmentFilterSelect?.quiz?.query ||"").trim();
+      if (currentQuery !== requestQuery) {
+        return;
+      }
+      this.assignmentQuizFilterOptions = {
+        items: Array.isArray(data?.items) ? data.items : [],
+        loading: false,
+        loaded: true,
+        query: requestQuery,
+      };
+    },
+
+    async selectAssignmentQuizFilter(item) {
+      const nextQuizKey = String(item?.quiz_key ||"").trim();
+      if (!nextQuizKey) return;
+      const previousQuizKey = String(this.filters?.assignments?.quiz_key ||"").trim();
+      this.filters.assignments.quiz_key = nextQuizKey;
+      this.closeAssignmentQuizFilter();
+      if (previousQuizKey !== nextQuizKey) {
+        await this.reloadAssignmentsFromFirstPage();
+      }
+    },
+
+    async clearAssignmentQuizFilter() {
+      const previousQuizKey = String(this.filters?.assignments?.quiz_key ||"").trim();
+      this.filters.assignments.quiz_key ="";
+      this.closeAssignmentQuizFilter();
+      if (previousQuizKey) {
+        await this.reloadAssignmentsFromFirstPage();
+      }
+    },
+
+    async selectFirstAssignmentQuizFilterMatch() {
+      const first = this.filteredAssignmentQuizFilterOptions()[0];
+      if (first) {
+        await this.selectAssignmentQuizFilter(first);
+      }
+    },
+
+    async handleAssignmentQuizFilterBackspace(event) {
+      const query = String(this.assignmentFilterSelect?.quiz?.query ||"").trim();
+      if (query || !String(this.filters?.assignments?.quiz_key ||"").trim()) return;
+      event?.preventDefault?.();
+      await this.clearAssignmentQuizFilter();
+    },
+
     selectAssignmentCandidate(item) {
-      this.assignmentForm.candidate_id = String(item?.id || "").trim();
+      this.assignmentForm.candidate_id = String(item?.id ||"").trim();
       this.closeAssignmentSelect("candidate");
     },
 
     clearAssignmentCandidate() {
-      this.assignmentForm.candidate_id = "";
+      this.assignmentForm.candidate_id ="";
       this.closeAssignmentSelect("candidate");
     },
 
     resetAssignmentCandidateSelection() {
-      this.assignmentForm.candidate_id = "";
+      this.assignmentForm.candidate_id ="";
       this.assignmentSelect.candidate.open = false;
-      this.assignmentSelect.candidate.query = "";
+      this.assignmentSelect.candidate.query ="";
     },
 
     attemptReviewAnswers() {
@@ -132,47 +299,47 @@ export function createAdminAssignmentsModule() {
 
     attemptReviewEvaluation() {
       const evaluation = this.attemptDetail?.review?.evaluation;
-      return evaluation && typeof evaluation === "object" ? evaluation : {};
+      return evaluation && typeof evaluation ==="object" ? evaluation : {};
     },
 
     attemptReviewQuestionKind(question) {
-      const explicit = String(question?.review_kind || "").trim().toLowerCase();
+      const explicit = String(question?.review_kind ||"").trim().toLowerCase();
       if (explicit) {
         return explicit;
       }
-      const type = String(question?.type || "").trim().toLowerCase();
-      const scoringMode = String(question?.scoring_mode || question?.scoring || "").trim().toLowerCase();
-      if (type === "short") {
-        return "short";
+      const type = String(question?.type ||"").trim().toLowerCase();
+      const scoringMode = String(question?.scoring_mode || question?.scoring ||"").trim().toLowerCase();
+      if (type ==="short") {
+        return"short";
       }
-      if ((type === "single" || type === "multiple") && scoringMode === "completion") {
-        return "completion";
+      if ((type ==="single" || type ==="multiple") && scoringMode ==="completion") {
+        return"completion";
       }
-      if ((type === "single" || type === "multiple") && scoringMode === "traits") {
-        return "traits";
+      if ((type ==="single" || type ==="multiple") && scoringMode ==="traits") {
+        return"traits";
       }
-      if (type === "single" || type === "multiple") {
+      if (type ==="single" || type ==="multiple") {
         const options = Array.isArray(question?.options) ? question.options : [];
         const hasTraits = options.some((option) => this.optionTraits(option).length > 0);
-        return hasTraits ? "traits" : "objective";
+        return hasTraits ?"traits" :"objective";
       }
-      return "unknown";
+      return"unknown";
     },
 
     attemptReviewIsShortQuestion(question) {
-      return this.attemptReviewQuestionKind(question) === "short";
+      return this.attemptReviewQuestionKind(question) ==="short";
     },
 
     attemptReviewIsTraitQuestion(question) {
-      return this.attemptReviewQuestionKind(question) === "traits";
+      return this.attemptReviewQuestionKind(question) ==="traits";
     },
 
     attemptReviewIsCompletionQuestion(question) {
-      return this.attemptReviewQuestionKind(question) === "completion";
+      return this.attemptReviewQuestionKind(question) ==="completion";
     },
 
     attemptReviewIsObjectiveQuestion(question) {
-      return this.attemptReviewQuestionKind(question) === "objective";
+      return this.attemptReviewQuestionKind(question) ==="objective";
     },
 
     attemptReviewHasOptions(question) {
@@ -182,23 +349,23 @@ export function createAdminAssignmentsModule() {
     attemptReviewSelectedOptions(question) {
       const options = question?.selected_options;
       return Array.isArray(options)
-        ? options.map((item) => String(item || "").trim()).filter(Boolean)
+        ? options.map((item) => String(item ||"").trim()).filter(Boolean)
         : [];
     },
 
     attemptReviewCorrectOptions(question) {
       const options = question?.correct_options;
       return Array.isArray(options)
-        ? options.map((item) => String(item || "").trim()).filter(Boolean)
+        ? options.map((item) => String(item ||"").trim()).filter(Boolean)
         : [];
     },
 
     attemptReviewHasAnswer(question) {
-      if (typeof question?.has_answer === "boolean") {
+      if (typeof question?.has_answer ==="boolean") {
         return question.has_answer;
       }
       if (this.attemptReviewIsShortQuestion(question)) {
-        return Boolean(String(question?.answer || "").trim());
+        return Boolean(String(question?.answer ||"").trim());
       }
       return this.attemptReviewSelectedOptions(question).length > 0;
     },
@@ -206,61 +373,60 @@ export function createAdminAssignmentsModule() {
     attemptReviewQuestionStatusLabel(question) {
       const hasAnswer = this.attemptReviewHasAnswer(question);
       if (this.attemptReviewIsTraitQuestion(question)) {
-        return hasAnswer ? "已作答" : "未作答";
+        return hasAnswer ?"已作答" :"未作答";
       }
       if (this.attemptReviewIsCompletionQuestion(question)) {
-        return hasAnswer ? "已作答得分" : "未作答";
+        return hasAnswer ?"已作答得分" :"未作答";
       }
       if (this.attemptReviewIsShortQuestion(question)) {
         if (!hasAnswer) {
-          return "未作答";
+          return"未作答";
         }
-        return question?.has_score ? "已评分" : "待评分";
+        return question?.has_score ?"已评分" :"待评分";
       }
       if (!hasAnswer) {
-        return "未作答";
+        return"未作答";
       }
       if (question?.is_correct) {
-        return "回答正确";
+        return"回答正确";
       }
       if (question?.is_partial) {
-        return "部分得分";
+        return"部分得分";
       }
-      return "回答错误";
+      return"回答错误";
     },
 
     attemptReviewQuestionStatusClass(question) {
       const label = this.attemptReviewQuestionStatusLabel(question);
-      const classes = [
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+      const classes = ["inline-flex items-center rounded-full border px-2.5 py-1 text-xs",
       ];
-      if (label === "回答正确") {
+      if (label ==="回答正确") {
         classes.push("border-emerald-200 bg-emerald-50 text-emerald-700");
-      } else if (label === "部分得分") {
+      } else if (label ==="部分得分") {
         classes.push("border-amber-200 bg-amber-50 text-amber-700");
-      } else if (label === "回答错误") {
+      } else if (label ==="回答错误") {
         classes.push("border-rose-200 bg-rose-50 text-rose-700");
-      } else if (label === "已评分") {
+      } else if (label ==="已评分") {
         classes.push("border-blue-200 bg-blue-50 text-blue-700");
-      } else if (label === "待评分") {
+      } else if (label ==="待评分") {
         classes.push("border-amber-200 bg-amber-50 text-amber-700");
-      } else if (label === "已作答得分") {
+      } else if (label ==="已作答得分") {
         classes.push("border-sky-200 bg-sky-50 text-sky-700");
-      } else if (label === "已作答") {
+      } else if (label ==="已作答") {
         classes.push("border-sky-200 bg-sky-50 text-sky-700");
       } else {
         classes.push("border-slate-200 bg-slate-50 text-slate-600");
       }
-      return classes.join(" ");
+      return classes.join("");
     },
 
     attemptReviewOptionIsSelected(question, option) {
-      const key = String(option?.key || "").trim();
+      const key = String(option?.key ||"").trim();
       return Boolean(key) && this.attemptReviewSelectedOptions(question).includes(key);
     },
 
     attemptReviewOptionIsCorrect(question, option) {
-      const key = String(option?.key || "").trim();
+      const key = String(option?.key ||"").trim();
       return Boolean(key) && this.attemptReviewCorrectOptions(question).includes(key);
     },
 
@@ -269,7 +435,7 @@ export function createAdminAssignmentsModule() {
       const selected = this.attemptReviewOptionIsSelected(question, option);
       const correct = this.attemptReviewOptionIsCorrect(question, option);
       if (this.attemptReviewIsTraitQuestion(question) || this.attemptReviewIsCompletionQuestion(question)) {
-        classes.push(selected ? "bg-sky-50/85" : "bg-slate-50/80");
+        classes.push(selected ?"bg-sky-50/85" :"bg-slate-50/80");
       } else if (selected && correct) {
         classes.push("bg-emerald-50/85");
       } else if (selected) {
@@ -279,11 +445,11 @@ export function createAdminAssignmentsModule() {
       } else {
         classes.push("bg-slate-50/80");
       }
-      return classes.join(" ");
+      return classes.join("");
     },
 
     attemptReviewOptionSelectionBadgeClass(question, option) {
-      const classes = ["shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold"];
+      const classes = ["shrink-0 rounded-full border px-2 py-0.5 text-[11px]"];
       if (this.attemptReviewIsTraitQuestion(question) || this.attemptReviewIsCompletionQuestion(question)) {
         classes.push("border-sky-200 bg-white text-sky-700");
       } else if (this.attemptReviewOptionIsCorrect(question, option)) {
@@ -291,19 +457,19 @@ export function createAdminAssignmentsModule() {
       } else {
         classes.push("border-rose-200 bg-white text-rose-700");
       }
-      return classes.join(" ");
+      return classes.join("");
     },
 
     attemptReviewShortAnswerText(question) {
       const answer = question?.answer;
-      if (typeof answer === "string") {
-        return answer.trim() || "未作答";
+      if (typeof answer ==="string") {
+        return answer.trim() ||"未作答";
       }
       if (Array.isArray(answer)) {
-        return answer.length ? answer.join("、") : "未作答";
+        return answer.length ? answer.join("、") :"未作答";
       }
-      if (answer === null || answer === undefined || answer === "") {
-        return "未作答";
+      if (answer === null || answer === undefined || answer ==="") {
+        return"未作答";
       }
       try {
         return JSON.stringify(answer, null, 2);
@@ -314,22 +480,22 @@ export function createAdminAssignmentsModule() {
 
     attemptEvaluationResultModeLabel() {
       const evaluation = this.attemptReviewEvaluation();
-      if (String(evaluation?.result_mode_label || "").trim()) {
+      if (String(evaluation?.result_mode_label ||"").trim()) {
         return String(evaluation.result_mode_label).trim();
       }
       const mapping = {
-        scored: "计分题",
-        traits: "量表题",
-        mixed: "计分 + 量表",
+        scored:"计分题",
+        traits:"量表题",
+        mixed:"计分 + 量表",
       };
-      const key = String(evaluation?.result_mode || "").trim().toLowerCase();
-      return mapping[key] || "未定义";
+      const key = String(evaluation?.result_mode ||"").trim().toLowerCase();
+      return mapping[key] ||"未定义";
     },
 
     attemptEvaluationPrimaryDimensions() {
       const evaluation = this.attemptReviewEvaluation();
       const items = evaluation?.primary_dimensions || evaluation?.traits?.primary_dimensions;
-      return Array.isArray(items) ? items.map((item) => String(item || "").trim()).filter(Boolean) : [];
+      return Array.isArray(items) ? items.map((item) => String(item ||"").trim()).filter(Boolean) : [];
     },
 
     attemptEvaluationTraitPairs() {
@@ -346,19 +512,19 @@ export function createAdminAssignmentsModule() {
 
     attemptEvaluationShowScore() {
       const evaluation = this.attemptReviewEvaluation();
-      if (typeof evaluation?.has_score === "boolean") {
+      if (typeof evaluation?.has_score ==="boolean") {
         return evaluation.has_score;
       }
-      return Boolean(String(evaluation?.score_display || "").trim()) && String(evaluation?.result_mode || "").trim() !== "traits";
+      return Boolean(String(evaluation?.score_display ||"").trim()) && String(evaluation?.result_mode ||"").trim() !=="traits";
     },
 
     attemptEvaluationHasContent() {
       const evaluation = this.attemptReviewEvaluation();
       return Boolean(
-        String(evaluation?.final_analysis || "").trim()
-        || String(evaluation?.candidate_remark || "").trim()
-        || String(evaluation?.score_display || "").trim()
-        || String(evaluation?.result_mode || "").trim()
+        String(evaluation?.final_analysis ||"").trim()
+        || String(evaluation?.candidate_remark ||"").trim()
+        || String(evaluation?.score_display ||"").trim()
+        || String(evaluation?.result_mode ||"").trim()
         || this.attemptEvaluationPrimaryDimensions().length
         || this.attemptEvaluationTraitPairs().length
         || this.attemptEvaluationDimensionList().length
@@ -369,82 +535,40 @@ export function createAdminAssignmentsModule() {
       return Math.max(0, Number(this.assignments?.summary?.unhandled_finished_count || 0));
     },
 
-    assignmentSurfaceStateClass(item) {
-      switch (this.assignmentStatusValue(item)) {
-        case "in_quiz":
-          return "assignment-surface--in-quiz";
-        case "grading":
-          return "assignment-surface--grading";
-        case "finished":
-          return "assignment-surface--finished";
-        case "expired":
-          return "assignment-surface--expired";
-        case "invited":
-        case "verified":
-          return "assignment-surface--waiting";
-        default:
-          return "";
-      }
-    },
-
-    assignmentCardClass(item) {
-      const classes = [];
-      const stateClass = this.assignmentSurfaceStateClass(item);
-      if (stateClass) {
-        classes.push(stateClass);
-      }
-      if (item?.needs_attention) {
-        classes.push("assignment-card--attention");
-      }
-      return classes.join(" ");
-    },
-
-    assignmentDetailSectionClass(item) {
-      const classes = [];
-      const stateClass = this.assignmentSurfaceStateClass(item);
-      if (stateClass) {
-        classes.push(stateClass);
-      }
-      if (item?.needs_attention) {
-        classes.push("assignment-detail-panel--attention");
-      }
-      return classes.join(" ");
-    },
-
     assignmentSourceBadgeClass() {
-      return "assignment-badge assignment-badge--source";
+      return"assignment-badge assignment-badge--source";
     },
 
     assignmentStatusBadgeClass(item) {
       const classes = ["assignment-badge"];
       switch (this.assignmentStatusValue(item)) {
-        case "in_quiz":
+        case"in_quiz":
           classes.push("assignment-badge--status-active");
           break;
-        case "grading":
+        case"grading":
           classes.push("assignment-badge--status-grading");
           break;
-        case "finished":
+        case"finished":
           classes.push("assignment-badge--status-finished");
           break;
-        case "expired":
+        case"expired":
           classes.push("assignment-badge--status-expired");
           break;
-        case "invited":
-        case "verified":
+        case"invited":
+        case"verified":
           classes.push("assignment-badge--status-waiting");
           break;
         default:
           classes.push("assignment-badge--status-neutral");
           break;
       }
-      return classes.join(" ");
+      return classes.join("");
     },
 
     assignmentHandlingBadgeClass(item) {
       return item?.needs_attention
-        ? "assignment-badge assignment-badge--attention"
-        : "assignment-badge assignment-badge--handled";
+        ?"assignment-badge assignment-badge--attention"
+        :"assignment-badge assignment-badge--handled";
     },
 
     assignmentIgnoresTiming(item) {
@@ -452,37 +576,37 @@ export function createAdminAssignmentsModule() {
     },
 
     canToggleAssignmentHandling(item) {
-      return String(item?.status || "").trim() === "finished";
+      return String(item?.status ||"").trim() ==="finished";
     },
 
     assignmentHandlingLabel(item) {
-      if (!this.canToggleAssignmentHandling(item)) return "";
-      return item?.needs_attention ? "未处理" : "已处理";
+      if (!this.canToggleAssignmentHandling(item)) return"";
+      return item?.needs_attention ?"未处理" :"已处理";
     },
 
     assignmentHandlingActionLabel(item) {
-      return item?.needs_attention ? "标记已处理" : "取消已处理";
+      return item?.needs_attention ?"标记已处理" :"取消已处理";
     },
 
     assignmentActionButtonClass(kind, item) {
       const classes = ["assignment-action"];
-      if (kind === "detail") {
+      if (kind ==="detail") {
         classes.push("assignment-action--primary");
-      } else if (kind === "danger") {
+      } else if (kind ==="danger") {
         classes.push("assignment-action--danger");
-      } else if (kind === "handling" && item?.needs_attention) {
+      } else if (kind ==="handling" && item?.needs_attention) {
         classes.push("assignment-action--warning");
       } else {
         classes.push("assignment-action--secondary");
       }
-      return classes.join(" ");
+      return classes.join("");
     },
 
     assignmentHandledMeta(item) {
-      const handledAt = String(item?.handled_at || "").trim();
-      if (!handledAt) return "";
+      const handledAt = String(item?.handled_at ||"").trim();
+      if (!handledAt) return"";
       const parts = [];
-      const handledBy = String(item?.handled_by || "").trim();
+      const handledBy = String(item?.handled_by ||"").trim();
       if (handledBy) {
         parts.push(handledBy);
       }
@@ -490,13 +614,13 @@ export function createAdminAssignmentsModule() {
       if (displayTime) {
         parts.push(displayTime);
       }
-      return parts.join(" · ");
+      return parts.join(" ·");
     },
 
     formatAnswerTime(seconds) {
       const value = Number(seconds || 0);
       if (!Number.isFinite(value) || value <= 0) {
-        return "";
+        return"";
       }
       const totalSeconds = Math.max(0, Math.round(value));
       const hours = Math.floor(totalSeconds / 3600);
@@ -516,68 +640,68 @@ export function createAdminAssignmentsModule() {
     },
 
     canDeleteAssignment(item) {
-      return Boolean(String(item?.token || "").trim());
+      return Boolean(String(item?.token ||"").trim());
     },
 
     async copyAssignmentUrl(item) {
-      await this.copyText(item?.url, "邀约链接已复制");
+      await this.copyText(item?.url,"邀约链接已复制");
     },
 
     async copyAssignmentQr(item) {
-      const qrPath = String(item?.qr_url || "").trim();
+      const qrPath = String(item?.qr_url ||"").trim();
       if (!qrPath) return;
       const qrUrl = new URL(qrPath, window.location.origin).toString();
       try {
-        if (!navigator.clipboard?.write || typeof window.ClipboardItem === "undefined") {
+        if (!navigator.clipboard?.write || typeof window.ClipboardItem ==="undefined") {
           throw new Error("image clipboard unsupported");
         }
-        const response = await fetch(qrUrl, { credentials: "same-origin" });
+        const response = await fetch(qrUrl, { credentials:"same-origin" });
         if (!response.ok) {
           throw new Error("qr fetch failed");
         }
         const blob = await response.blob();
         await navigator.clipboard.write([
           new window.ClipboardItem({
-            [blob.type || "image/png"]: blob,
+            [blob.type ||"image/png"]: blob,
           }),
         ]);
         this.showNotice("二维码图片已复制");
       } catch (_error) {
-        await this.copyText(qrUrl, "当前环境不支持复制图片，已复制二维码地址");
+        await this.copyText(qrUrl,"当前环境不支持复制图片，已复制二维码地址");
       }
     },
 
     async toggleAssignmentHandling(item) {
       if (!this.canToggleAssignmentHandling(item)) return;
-      const token = String(item?.token || "").trim();
+      const token = String(item?.token ||"").trim();
       if (!token) return;
       const handled = Boolean(item?.needs_attention);
       const result = await this.api(`/api/admin/assignments/${encodeURIComponent(token)}/handling`, {
-        method: "POST",
+        method:"POST",
         body: JSON.stringify({ handled }),
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type":"application/json" },
       });
       const updatedItem = result?.item;
-      if (updatedItem && typeof updatedItem === "object") {
+      if (updatedItem && typeof updatedItem ==="object") {
         this.applyAssignmentItemUpdate(updatedItem);
       } else {
         await this.loadAssignments({ quiet: true });
-        if (String(this.attemptDetail?.quiz_paper?.token || "").trim() === token) {
+        if (String(this.attemptDetail?.quiz_paper?.token ||"").trim() === token) {
           await this.loadAttemptDetail(token, { quiet: true });
         }
       }
-      this.showNotice(handled ? "已标记为已处理" : "已取消已处理");
+      this.showNotice(handled ?"已标记为已处理" :"已取消已处理");
     },
 
     async deleteAssignment(item) {
       if (!this.canDeleteAssignment(item)) return;
-      const token = String(item?.token || "").trim();
+      const token = String(item?.token ||"").trim();
       if (!token) return;
-      const name = String(item?.candidate_name || "").trim() || "该邀约";
+      const name = String(item?.candidate_name ||"").trim() ||"该邀约";
       if (!window.confirm(`确定删除 ${name} 的邀约吗？这会同时删除该次答题归档，不影响候选人和简历。`)) return;
-      await this.api(`/api/admin/assignments/${encodeURIComponent(token)}`, { method: "DELETE" });
+      await this.api(`/api/admin/assignments/${encodeURIComponent(token)}`, { method:"DELETE" });
       this.showNotice("邀约已删除");
-      const currentToken = String(this.attemptDetail?.quiz_paper?.token || this.attemptDetail?.assignment?.token || "").trim();
+      const currentToken = String(this.attemptDetail?.quiz_paper?.token || this.attemptDetail?.assignment?.token ||"").trim();
       if (currentToken === token) {
         await this.handleRoute("/admin/assignments");
         return;
@@ -589,7 +713,7 @@ export function createAdminAssignmentsModule() {
       const previousNeedsAttention = Boolean(previousItem?.needs_attention);
       const nextNeedsAttention = Boolean(nextItem?.needs_attention);
       if (previousNeedsAttention === nextNeedsAttention) return;
-      if (!this.assignments.summary || typeof this.assignments.summary !== "object") {
+      if (!this.assignments.summary || typeof this.assignments.summary !=="object") {
         this.assignments.summary = { unhandled_finished_count: 0 };
       }
       const current = Number(this.assignments.summary.unhandled_finished_count || 0);
@@ -597,11 +721,11 @@ export function createAdminAssignmentsModule() {
     },
 
     applyAssignmentItemUpdate(updatedItem) {
-      const token = String(updatedItem?.token || "").trim();
+      const token = String(updatedItem?.token ||"").trim();
       if (!token) return;
       const items = Array.isArray(this.assignments?.items) ? this.assignments.items : [];
       const nextItems = items.map((item) => {
-        if (String(item?.token || "").trim() !== token) {
+        if (String(item?.token ||"").trim() !== token) {
           return item;
         }
         this.updateAssignmentSummaryCount(item, updatedItem);
@@ -612,7 +736,7 @@ export function createAdminAssignmentsModule() {
         items: nextItems,
         summary: this.assignments?.summary || { unhandled_finished_count: 0 },
       };
-      if (String(this.attemptDetail?.quiz_paper?.token || "").trim() === token) {
+      if (String(this.attemptDetail?.quiz_paper?.token ||"").trim() === token) {
         this.attemptDetail = {
           ...(this.attemptDetail || {}),
           quiz_paper: { ...(this.attemptDetail?.quiz_paper || {}), ...updatedItem },
@@ -621,26 +745,26 @@ export function createAdminAssignmentsModule() {
     },
 
     syncStatus() {
-      return String(this.syncState?.status || "").trim().toLowerCase();
+      return String(this.syncState?.status ||"").trim().toLowerCase();
     },
 
     isSyncBusy() {
-      return ["queued", "running"].includes(this.syncStatus());
+      return ["queued","running"].includes(this.syncStatus());
     },
 
     hasRepoBinding() {
-      return Boolean(String(this.repoBinding?.repo_url || "").trim());
+      return Boolean(String(this.repoBinding?.repo_url ||"").trim());
     },
 
     resetRebindForm() {
-      this.rebindForm = { open: false, repoUrl: "", confirmationText: "" };
+      this.rebindForm = { open: false, repoUrl:"", confirmationText:"" };
     },
 
     openRebindForm() {
       if (this.isSyncBusy()) return;
       this.rebindForm.open = true;
-      this.rebindForm.repoUrl = "";
-      this.rebindForm.confirmationText = "";
+      this.rebindForm.repoUrl ="";
+      this.rebindForm.confirmationText ="";
     },
 
     closeRebindForm() {
@@ -682,15 +806,14 @@ export function createAdminAssignmentsModule() {
     },
 
     assignmentPaginationButtonClass(disabled) {
-      const classes = [
-        "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold transition",
+      const classes = ["inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs transition",
       ];
       if (disabled) {
         classes.push("cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300");
       } else {
         classes.push("border-blue-100 bg-white text-slate-700 hover:bg-blue-50 hover:text-blue-700");
       }
-      return classes.join(" ");
+      return classes.join("");
     },
 
     normalizeAssignmentsPage(page, fallback = 1) {
@@ -725,13 +848,13 @@ export function createAdminAssignmentsModule() {
     },
 
     assignmentStatusValue(item) {
-      return String(item?.status || "").trim().toLowerCase();
+      return String(item?.status ||"").trim().toLowerCase();
     },
 
     assignmentStatusSnapshotMap(items) {
       const out = {};
       for (const item of Array.isArray(items) ? items : []) {
-        const token = String(item?.token || "").trim();
+        const token = String(item?.token ||"").trim();
         if (!token) continue;
         out[token] = this.assignmentStatusValue(item);
       }
@@ -742,26 +865,26 @@ export function createAdminAssignmentsModule() {
       const startedGradingItems = [];
       const finishedItems = [];
       for (const item of Array.isArray(nextItems) ? nextItems : []) {
-        const token = String(item?.token || "").trim();
+        const token = String(item?.token ||"").trim();
         if (!token) continue;
-        const previousStatus = String(previousSnapshot?.[token] || "").trim().toLowerCase();
+        const previousStatus = String(previousSnapshot?.[token] ||"").trim().toLowerCase();
         const nextStatus = this.assignmentStatusValue(item);
-        if (previousStatus && previousStatus !== "grading" && previousStatus !== "finished" && nextStatus === "grading") {
+        if (previousStatus && previousStatus !=="grading" && previousStatus !=="finished" && nextStatus ==="grading") {
           startedGradingItems.push(item);
           continue;
         }
-        if (previousStatus === "grading" && nextStatus === "finished") {
+        if (previousStatus ==="grading" && nextStatus ==="finished") {
           finishedItems.push(item);
         }
       }
       if (startedGradingItems.length === 1) {
-        const candidateName = String(startedGradingItems[0]?.candidate_name || "").trim() || "该答题";
+        const candidateName = String(startedGradingItems[0]?.candidate_name ||"").trim() ||"该答题";
         this.showNotice(`${candidateName} 已结束答题，正在判卷`);
       } else if (startedGradingItems.length > 1) {
         this.showNotice(`${startedGradingItems.length} 条答题记录已结束，正在判卷`);
       }
       if (finishedItems.length === 1) {
-        const candidateName = String(finishedItems[0]?.candidate_name || "").trim() || "该答题";
+        const candidateName = String(finishedItems[0]?.candidate_name ||"").trim() ||"该答题";
         this.showNotice(`${candidateName} 的判卷已结束`);
         return;
       }
@@ -778,41 +901,42 @@ export function createAdminAssignmentsModule() {
 
     scheduleAssignmentsPolling() {
       if (this.assignmentsPollTimer || !this.session.authenticated) return;
-      if (!["assignments", "attempt-detail"].includes(this.route.name)) return;
+      if (!["assignments","attempt-detail"].includes(this.route.name)) return;
       this.assignmentsPollTimer = window.setTimeout(async () => {
         this.assignmentsPollTimer = null;
         if (!this.session.authenticated) return;
-        if (this.route.name === "assignments") {
-          await this.loadAssignments({ quiet: true, source: "assignments-poll" });
+        if (this.route.name ==="assignments") {
+          await this.loadAssignments({ quiet: true, source:"assignments-poll" });
           return;
         }
-        if (this.route.name === "attempt-detail") {
-          await this.loadAttemptDetail(this.route.params.token, { quiet: true, source: "assignments-poll" });
+        if (this.route.name ==="attempt-detail") {
+          await this.loadAttemptDetail(this.route.params.token, { quiet: true, source:"assignments-poll" });
         }
       }, this.assignmentsPollIntervalMs);
     },
 
     scheduleSyncPolling() {
-      if (this.syncPollTimer || !this.isSyncBusy() || this.route.name !== "quizzes") return;
+      if (this.syncPollTimer || !this.isSyncBusy() || this.route.name !=="quizzes") return;
       this.syncPollTimer = window.setTimeout(async () => {
         this.syncPollTimer = null;
-        if (this.route.name !== "quizzes" || !this.session.authenticated) return;
+        if (this.route.name !=="quizzes" || !this.session.authenticated) return;
         const previousSyncStatus = this.syncStatus();
-        const previousSyncJobId = String(this.syncState?.last_job_id || "").trim();
+        const previousSyncJobId = String(this.syncState?.last_job_id ||"").trim();
         await this.loadQuizzes({
           quiet: true,
-          source: "sync-poll",
+          source:"sync-poll",
           previousSyncStatus,
           previousSyncJobId,
         });
       }, this.syncPollIntervalMs);
     },
 
-    async loadAssignments({ quiet = false, source = "manual", page = null } = {}) {
+    async loadAssignments({ quiet = false, source ="manual", page = null } = {}) {
       const query = new URLSearchParams();
       const nextPage = this.normalizeAssignmentsPage(page, this.assignments?.page || 1);
       query.set("page", String(nextPage));
       if (this.filters.assignments.q) query.set("q", this.filters.assignments.q);
+      if (this.filters.assignments.quiz_key) query.set("quiz_key", this.filters.assignments.quiz_key);
       if (this.filters.assignments.start_from) query.set("start_from", this.filters.assignments.start_from);
       if (this.filters.assignments.end_to) query.set("end_to", this.filters.assignments.end_to);
       const previousSnapshot = { ...(this.assignmentStatusSnapshot || {}) };
@@ -826,10 +950,10 @@ export function createAdminAssignmentsModule() {
         ...data,
       };
       this.assignmentStatusSnapshot = this.assignmentStatusSnapshotMap(nextItems);
-      if (source === "assignments-poll") {
+      if (source ==="assignments-poll") {
         this.notifyAssignmentTransitions(nextItems, previousSnapshot);
       }
-      if (this.route.name === "assignments") {
+      if (this.route.name ==="assignments") {
         this.scheduleAssignmentsPolling();
       }
     },
@@ -842,23 +966,29 @@ export function createAdminAssignmentsModule() {
         ignore_timing: Boolean(this.assignmentForm.ignore_timing),
       };
       const result = await this.api("/api/admin/assignments", {
-        method: "POST",
+        method:"POST",
         body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type":"application/json" },
       });
-      const inviteStartDate = String(payload.invite_start_date || "").trim();
-      const inviteEndDate = String(payload.invite_end_date || "").trim();
+      const inviteStartDate = String(payload.invite_start_date ||"").trim();
+      const inviteEndDate = String(payload.invite_end_date ||"").trim();
       if (inviteStartDate) {
-        const currentStart = String(this.filters.assignments.start_from || "").trim();
+        const currentStart = String(this.filters.assignments.start_from ||"").trim();
         if (!currentStart || currentStart > inviteStartDate) {
           this.filters.assignments.start_from = inviteStartDate;
         }
       }
       if (inviteEndDate) {
-        const currentEnd = String(this.filters.assignments.end_to || "").trim();
+        const currentEnd = String(this.filters.assignments.end_to ||"").trim();
         if (!currentEnd || currentEnd < inviteEndDate) {
           this.filters.assignments.end_to = inviteEndDate;
         }
+      }
+      const payloadQuizKey = String(payload.quiz_key ||"").trim();
+      const currentQuizKey = String(this.filters.assignments.quiz_key ||"").trim();
+      if (payloadQuizKey && currentQuizKey && currentQuizKey !== payloadQuizKey) {
+        this.filters.assignments.quiz_key = payloadQuizKey;
+        this.closeAssignmentQuizFilter();
       }
       this.assignmentForm.ignore_timing = false;
       this.resetAssignmentCandidateSelection();
@@ -866,8 +996,8 @@ export function createAdminAssignmentsModule() {
       await this.loadAssignments({ page: 1 });
     },
 
-    async loadAttemptDetail(token, { quiet = false, source = "manual" } = {}) {
-      const currentToken = String(token || "").trim();
+    async loadAttemptDetail(token, { quiet = false, source ="manual" } = {}) {
+      const currentToken = String(token ||"").trim();
       const previousStatus = this.assignmentStatusValue(this.attemptDetail?.quiz_paper);
       const data = await this.api(`/api/admin/attempts/${encodeURIComponent(currentToken)}`, { quiet });
       if (!data) return;
@@ -884,15 +1014,15 @@ export function createAdminAssignmentsModule() {
           [currentToken]: nextStatus,
         };
       }
-      if (source === "assignments-poll") {
-        const candidateName = String(this.attemptDetail?.quiz_paper?.candidate_name || "").trim() || "该答题";
-        if (previousStatus && previousStatus !== "grading" && previousStatus !== "finished" && nextStatus === "grading") {
+      if (source ==="assignments-poll") {
+        const candidateName = String(this.attemptDetail?.quiz_paper?.candidate_name ||"").trim() ||"该答题";
+        if (previousStatus && previousStatus !=="grading" && previousStatus !=="finished" && nextStatus ==="grading") {
           this.showNotice(`${candidateName} 已结束答题，正在判卷`);
-        } else if (previousStatus === "grading" && nextStatus === "finished") {
+        } else if (previousStatus ==="grading" && nextStatus ==="finished") {
           this.showNotice(`${candidateName} 的判卷已结束`);
         }
       }
-      if (this.route.name === "attempt-detail") {
+      if (this.route.name ==="attempt-detail") {
         this.scheduleAssignmentsPolling();
       }
       await this.$nextTick();

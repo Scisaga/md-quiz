@@ -2960,6 +2960,7 @@ WHERE quiz_key=%s AND quiz_version_id IS NULL
 def list_quiz_papers(
     *,
     query: str | None = None,
+    quiz_key: str | None = None,
     invite_start_from: str | None = None,
     invite_start_to: str | None = None,
     invite_end_from: str | None = None,
@@ -2992,6 +2993,10 @@ def list_quiz_papers(
   """
     params: list[Any] = []
     where: list[str] = []
+    quiz_key_value = str(quiz_key or "").strip()
+    if quiz_key_value:
+        where.append("ep.quiz_key = %s")
+        params.append(quiz_key_value)
     q = str(query or "").strip()
     if q:
         ql = f"%{q}%"
@@ -3978,6 +3983,7 @@ def list_system_log_daily_counts(
 def count_quiz_papers(
     *,
     query: str | None = None,
+    quiz_key: str | None = None,
     invite_start_from: str | None = None,
     invite_start_to: str | None = None,
     invite_end_from: str | None = None,
@@ -3990,6 +3996,10 @@ def count_quiz_papers(
  """
     params: list[Any] = []
     where: list[str] = []
+    quiz_key_value = str(quiz_key or "").strip()
+    if quiz_key_value:
+        where.append("ep.quiz_key = %s")
+        params.append(quiz_key_value)
     q = str(query or "").strip()
     if q:
         ql = f"%{q}%"
@@ -4018,6 +4028,7 @@ def count_quiz_papers(
 def count_unhandled_finished_quiz_papers(
     *,
     query: str | None = None,
+    quiz_key: str | None = None,
     invite_start_from: str | None = None,
     invite_start_to: str | None = None,
     invite_end_from: str | None = None,
@@ -4030,6 +4041,10 @@ def count_unhandled_finished_quiz_papers(
  """
     params: list[Any] = []
     where: list[str] = ["ep.status = 'finished'::quiz_paper_status", "ep.handled_at IS NULL"]
+    quiz_key_value = str(quiz_key or "").strip()
+    if quiz_key_value:
+        where.append("ep.quiz_key = %s")
+        params.append(quiz_key_value)
     q = str(query or "").strip()
     if q:
         ql = f"%{q}%"

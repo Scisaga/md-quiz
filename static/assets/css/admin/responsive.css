@@ -1,3 +1,199 @@
 @layer components {
-  /* 响应式规则保留在 components.css；后续新增覆盖优先补到这里。 */
+  @supports (height: 100dvh) {
+    .admin-r-sidebar {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+  }
+
+  @media (max-width: 1279px) {
+    .admin-r-shell {
+      grid-template-columns: 220px minmax(0, 1fr);
+    }
+
+    .admin-r-shell--collapsed {
+      grid-template-columns: 76px minmax(0, 1fr);
+    }
+
+    .admin-r-workspace,
+    .admin-r-workspace--split,
+    .admin-r-workspace--wide {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 14px;
+    }
+
+    .admin-r-grid--4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-r-grid--3,
+    .admin-r-grid--2 {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .admin-r-shell {
+      display: block;
+    }
+
+    .admin-r-sidebar {
+      display: none;
+    }
+
+    .admin-r-topbar {
+      min-height: 74px;
+      padding: 0 14px;
+    }
+
+    .admin-r-titlebar__section {
+      font-size: 11px;
+    }
+
+    .admin-r-titlebar__title {
+      font-size: 20px;
+    }
+
+    .admin-r-topbar__meta {
+      gap: 6px;
+    }
+
+    .admin-r-user-pill {
+      display: none;
+    }
+
+    .admin-r-mobile-logout {
+      display: inline-flex;
+    }
+
+    .admin-r-mobile-nav {
+      position: sticky;
+      top: 0;
+      z-index: 24;
+      display: block;
+      overflow: visible;
+      border-bottom: 1px solid var(--admin-line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+    }
+
+    .admin-r-mobile-nav__track {
+      display: grid;
+      grid-template-columns: repeat(var(--admin-mobile-nav-count, 7), minmax(0, 1fr));
+      gap: 3px;
+      overflow: visible;
+      padding: 6px 7px;
+    }
+
+    .admin-r-mobile-nav__item {
+      position: relative;
+      display: inline-flex;
+      width: auto;
+      min-width: 0;
+      min-height: 50px;
+      flex: 1 1 auto;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .admin-r-mobile-nav__item.is-active {
+      border-color: rgba(37, 99, 235, 0.14);
+      background: rgba(239, 246, 255, 0.72);
+      color: var(--admin-brand);
+    }
+
+    .admin-r-mobile-nav__item .material-symbols-rounded {
+      font-size: 20px;
+      font-weight: 300;
+      font-variation-settings:
+        "FILL" 0,
+        "wght" 300,
+        "GRAD" -25,
+        "opsz" 22;
+      line-height: 1;
+    }
+
+    .admin-r-mobile-nav__item svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .admin-r-mobile-nav__item svg path {
+      stroke-width: 9.5;
+    }
+
+    .admin-r-mobile-nav__label {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1;
+    }
+
+    @media (max-width: 360px) {
+      .admin-r-mobile-nav__track {
+        gap: 2px;
+        padding-inline: 5px;
+      }
+
+      .admin-r-mobile-nav__item {
+        min-height: 46px;
+        border-radius: 9px;
+        font-size: 10px;
+      }
+
+      .admin-r-mobile-nav__item .material-symbols-rounded,
+      .admin-r-mobile-nav__item svg {
+        font-size: 19px;
+        width: 19px;
+        height: 19px;
+      }
+    }
+
+    .admin-r-workspace,
+    .admin-r-workspace--split,
+    .admin-r-workspace--wide {
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .admin-r-header,
+    .admin-r-toolbar {
+      align-items: flex-start;
+      flex-direction: column;
+      padding: 14px;
+    }
+
+    .admin-r-section {
+      padding: 14px;
+    }
+
+    .admin-r-table-head {
+      display: none;
+    }
+
+    .admin-r-row {
+      padding: 14px;
+    }
+
+    .admin-r-grid--4,
+    .admin-r-grid--3,
+    .admin-r-grid--2 {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-r-notices {
+      right: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      left: 10px;
+    }
+  }
 }

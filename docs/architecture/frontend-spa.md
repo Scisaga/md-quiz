@@ -38,16 +38,17 @@
   - 页面级状态与动作，按领域拆分为 `quizzes / candidates / assignments / logs / status`
 - `static/admin/pages/*.html`
   - 后台页面片段
-  - 当前页面包括：`login`、`quizzes`、`quiz-detail`、`candidates`、`candidate-detail`、`assignments`、`attempt-detail`、`logs`、`status`、`mcp`
+  - 当前页面包括：`login`、`dashboard`、`quizzes`、`quiz-detail`、`candidates`、`candidate-detail`、`assignments`、`attempt-detail`、`logs`、`status`、`mcp`
 
 ### 路由装载流程
 
 1. `index.html` 只启动 `adminApp().boot()`
 2. `boot()` 先请求 `/api/admin/session`
 3. 已登录时再预加载 `/api/admin/bootstrap`、状态摘要及部分列表数据
-4. `router.js` 根据当前路径选择页面片段
-5. 片段加载到 `pageMount` 或 `loginMount`
-6. 片段中的 Alpine 指令通过共享 loader 重新 `initTree`
+4. `/admin` 默认进入 `/admin/dashboard`，登录成功后也进入总览页
+5. `router.js` 根据当前路径选择页面片段
+6. 片段加载到 `pageMount` 或 `loginMount`
+7. 片段中的 Alpine 指令通过共享 loader 重新 `initTree`
 
 ## 候选人端 SPA
 

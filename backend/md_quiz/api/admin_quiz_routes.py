@@ -7,9 +7,23 @@ from . import admin as shared
 router = APIRouter()
 
 
+def _public_invite_filter_mode(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if text in {"enabled", "true", "1", "yes", "public"}:
+        return "enabled"
+    if text in {"disabled", "false", "0", "no", "none"}:
+        return "disabled"
+    return ""
+
+
+def _exam_public_invite_enabled(exam: dict) -> bool:
+    quiz_key = str((exam or {}).get("quiz_key") or "").strip()
+    return bool(shared.exam_helpers.get_public_invite_config(quiz_key).get("enabled"))
+
+
 @router.get("/quizzes")
 @router.get("/exams")
-def list_exams(request: Request, q: str = "", page: int = 1):
+def list_exams(request: Request, q: str = "", page: int = 1, public_invite: str = ""):
     shared._require_admin(request)
     exams = shared.exam_helpers._list_exams()
     query = str(q or "").strip().lower()
@@ -22,6 +36,10 @@ def list_exams(request: Request, q: str = "", page: int = 1):
             or query in str(item.get("id") or "")
             or any(query in str(tag or "").lower() for tag in (item.get("tags") or []))
         ]
+    public_invite_mode = _public_invite_filter_mode(public_invite)
+    if public_invite_mode:
+        expected = public_invite_mode == "enabled"
+        exams = [item for item in exams if _exam_public_invite_enabled(item) == expected]
     exams.sort(key=lambda item: float(item.get("_mtime") or 0), reverse=True)
     per_page = 20
     total = len(exams)

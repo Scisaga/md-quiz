@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -8,6 +9,29 @@ from fastapi import APIRouter, File, Request, Response, UploadFile, status
 from . import admin as shared
 
 router = APIRouter()
+
+_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
+
+
+def _is_image_file(mime: str, filename: str) -> bool:
+    mime_value = str(mime or "").strip().lower()
+    if mime_value.startswith("image/"):
+        return True
+    suffix = os.path.splitext(str(filename or "").strip().lower())[1]
+    return suffix in _IMAGE_EXTENSIONS
+
+
+def _response_media_type(mime: str, filename: str, *, preview: bool) -> str:
+    mime_value = str(mime or "").strip()
+    if not preview or mime_value.lower().startswith("image/"):
+        return mime_value or "application/octet-stream"
+    guessed = str(mimetypes.guess_type(filename)[0] or "").strip()
+    return guessed if guessed.lower().startswith("image/") else (mime_value or "application/octet-stream")
+
+
+def _content_disposition(filename: str, *, preview: bool, mime: str) -> str:
+    disposition = "inline" if preview and _is_image_file(mime, filename) else "attachment"
+    return f'{disposition}; filename="{filename}"'
 
 
 @router.get("/candidates")
@@ -188,7 +212,7 @@ def update_candidate_evaluation(candidate_id: int, payload: shared.CandidateEval
 
 
 @router.get("/candidates/{candidate_id}/resume")
-def download_candidate_resume(candidate_id: int, request: Request):
+def download_candidate_resume(candidate_id: int, request: Request, preview: bool = False):
     shared._require_admin(request)
     candidate = shared.deps.get_candidate(candidate_id)
     if not candidate:
@@ -201,12 +225,12 @@ def download_candidate_resume(candidate_id: int, request: Request):
         raise shared.HTTPException(status_code=404, detail="简历不存在")
     filename = os.path.basename(str(resume.get("resume_filename") or "").strip()) or f"candidate_{candidate_id}_resume.bin"
     mime = str(resume.get("resume_mime") or "").strip() or "application/octet-stream"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return Response(content=bytes(data), media_type=mime, headers=headers)
+    headers = {"Content-Disposition": _content_disposition(filename, preview=bool(preview), mime=mime)}
+    return Response(content=bytes(data), media_type=_response_media_type(mime, filename, preview=bool(preview)), headers=headers)
 
 
 @router.get("/candidates/{candidate_id}/business-card")
-def download_candidate_business_card(candidate_id: int, request: Request):
+def download_candidate_business_card(candidate_id: int, request: Request, preview: bool = False):
     shared._require_admin(request)
     candidate = shared.deps.get_candidate(candidate_id)
     if not candidate:
@@ -222,8 +246,8 @@ def download_candidate_business_card(candidate_id: int, request: Request):
         or f"candidate_{candidate_id}_business_card.bin"
     )
     mime = str(business_card.get("business_card_mime") or "").strip() or "application/octet-stream"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return Response(content=bytes(data), media_type=mime, headers=headers)
+    headers = {"Content-Disposition": _content_disposition(filename, preview=bool(preview), mime=mime)}
+    return Response(content=bytes(data), media_type=_response_media_type(mime, filename, preview=bool(preview)), headers=headers)
 
 
 @router.post("/candidates/{candidate_id}/resume/reparse")

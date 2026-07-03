@@ -1,299 +1,248 @@
-<div x-show="route.name === 'assignments'" class="admin-mobile-pane-grid grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-            <div
-              x-show="shouldShowAdminCompactTabs('assignments')"
-              x-cloak
-              data-admin-compact-tabs="assignments"
-              class="hidden admin-compact-tabs md:block xl:hidden"
-            >
-              <div class="admin-compact-tabs__track" role="tablist" aria-label="邀约与答题内容切换">
-                <template x-for="tab in adminCompactTabs('assignments')" :key="tab.id">
-                  <button
-                    type="button"
-                    role="tab"
-                    @click="setAdminCompactTab('assignments', tab.id)"
-                    :class="adminCompactTab('assignments') === tab.id ? 'admin-compact-tab--active' : 'admin-compact-tab--inactive'"
-                    :aria-selected="String(adminCompactTab('assignments') === tab.id)"
-                    class="admin-compact-tab"
-                    x-text="tab.label"
-                  ></button>
-                </template>
-              </div>
-            </div>
+<div x-show="route.name === 'assignments'" class="admin-r-workspace admin-r-workspace--split">
+  <div x-show="shouldShowAdminCompactTabs('assignments')" x-cloak data-admin-compact-tabs="assignments" class="admin-compact-tabs">
+    <div class="admin-compact-tabs__track" role="tablist" aria-label="邀约与答题内容切换">
+      <template x-for="tab in adminCompactTabs('assignments')" :key="tab.id">
+        <button
+          type="button"
+          role="tab"
+          @click="setAdminCompactTab('assignments', tab.id)"
+          :class="adminCompactTab('assignments') === tab.id ? 'admin-compact-tab--active' : 'admin-compact-tab--inactive'"
+          :aria-selected="String(adminCompactTab('assignments') === tab.id)"
+          class="admin-compact-tab"
+          x-text="tab.label"
+        ></button>
+      </template>
+    </div>
+  </div>
 
-            <section
-              x-show="adminCompactPanelVisible('assignments', 'list')"
-              class="admin-surface rounded-3xl border border-white/70 bg-white/82 p-5 shadow-[var(--admin-shadow)] backdrop-blur-xl"
-            >
-              <div class="flex flex-col gap-4">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 class="text-xl font-semibold tracking-[-0.03em] text-slate-900">邀约与答题状态</h2>
-                    <p class="mt-1 text-sm text-slate-600">查看当前答题实例、状态和得分。</p>
-                  </div>
-                  <div class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
-                    未处理 <span class="tabular-nums" x-text="unhandledAssignmentCount()"></span>
-                  </div>
-                </div>
-                <div class="grid gap-3 lg:grid-cols-3">
-                  <label class="block">
-                    <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">搜索姓名</span>
-                    <input x-model="filters.assignments.q" @input="scheduleAssignmentsReloadFromFirstPage" class="w-full rounded-lg border border-blue-100 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-300" placeholder="姓名 / 手机号 / token" />
-                  </label>
-                  <label class="block">
-                    <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">开始时间</span>
-                    <input x-model="filters.assignments.start_from" @change="reloadAssignmentsFromFirstPage" type="date" class="w-full rounded-lg border border-blue-100 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-300" />
-                  </label>
-                  <label class="block">
-                    <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">结束时间</span>
-                    <input x-model="filters.assignments.end_to" @change="reloadAssignmentsFromFirstPage" type="date" class="w-full rounded-lg border border-blue-100 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-300" />
-                  </label>
-                </div>
-              </div>
-              <div class="mt-5 grid gap-3">
-                <template x-for="item in assignments.items" :key="item.attempt_id">
-                  <div
-                    @click="go('/admin/attempt/' + item.token)"
-                    @keydown.enter.prevent="go('/admin/attempt/' + item.token)"
-                    tabindex="0"
-                    role="button"
-                    class="assignment-card assignment-surface"
-                    :class="assignmentCardClass(item)"
-                  >
-                    <div class="min-w-0">
-                      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                        <div class="min-w-0 flex-1">
-                          <div class="text-lg font-semibold text-slate-900" x-text="item.candidate_name"></div>
-                          <div class="mt-1 font-mono text-xs text-slate-500" x-text="item.token"></div>
-                        </div>
-                        <div class="flex max-w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:flex-nowrap">
-                          <div class="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
-                            <span :class="assignmentSourceBadgeClass()" x-text="item.source_label"></span>
-                            <span :class="assignmentStatusBadgeClass(item)" x-text="item.status_label"></span>
-                            <span
-                              x-show="assignmentIgnoresTiming(item)"
-                              class="assignment-badge border-amber-200 bg-amber-50 text-amber-700"
-                            >已忽略计时</span>
-                            <span
-                              x-show="canToggleAssignmentHandling(item)"
-                              :class="assignmentHandlingBadgeClass(item)"
-                              x-text="assignmentHandlingLabel(item)"
-                            ></span>
-                          </div>
-                          <div class="assignment-action-group" role="group" aria-label="邀约操作">
-                            <button
-                              @click.stop="go('/admin/attempt/' + item.token)"
-                              type="button"
-                              :class="assignmentActionButtonClass('detail', item)"
-                            >查看详情</button>
-                            <button
-                              x-show="canToggleAssignmentHandling(item)"
-                              @click.stop="toggleAssignmentHandling(item)"
-                              type="button"
-                              :class="assignmentActionButtonClass('handling', item)"
-                              x-text="assignmentHandlingActionLabel(item)"
-                            ></button>
-                            <button
-                              x-show="canDeleteAssignment(item)"
-                              @click.stop="deleteAssignment(item)"
-                              type="button"
-                              :class="assignmentActionButtonClass('danger', item)"
-                            >删除邀约</button>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1" x-text="item.quiz_key"></span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1">得分 <strong x-text="item.score_display || '-'"></strong></span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1">开始 <strong x-text="formatDate(item.invite_start_date) || '-'"></strong></span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1">结束 <strong x-text="formatDate(item.invite_end_date) || '-'"></strong></span>
-                      </div>
-                      <div x-show="assignmentHandledMeta(item)" class="mt-2 text-[11px] text-slate-500" x-text="'处理人：' + assignmentHandledMeta(item)"></div>
-                      <div class="mt-4 flex items-center gap-3 border-t border-slate-100 pt-3">
-                        <div class="min-w-0 flex-1">
-                          <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">邀约 URL</div>
-                          <div class="mt-1 flex flex-wrap items-center gap-2">
-                            <button @click.stop="copyAssignmentUrl(item)" type="button" class="block min-w-0 max-w-full font-mono text-left text-xs text-slate-700 underline decoration-dotted underline-offset-2 transition hover:text-blue-700">
-                              <span class="break-all" x-text="item.url || '-'"></span>
-                            </button>
-                            <button @click.stop="copyAssignmentUrl(item)" type="button" class="shrink-0 rounded-xl border border-blue-100 bg-white px-2.5 py-1 text-[11px] font-medium text-blue-700 transition hover:bg-blue-50">复制</button>
-                          </div>
-                        </div>
-                        <button @click.stop="copyAssignmentQr(item)" type="button" class="-mb-2 -mr-2 shrink-0 self-end overflow-hidden rounded-lg transition hover:opacity-85" title="点击复制二维码">
-                          <img :src="item.qr_url" alt="邀约二维码" class="h-16 w-16 rounded-xl object-cover" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-                <div x-show="!(assignments.items || []).length" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-10 text-center text-sm text-slate-500">
-                  当前筛选条件下没有邀约记录
-                </div>
-              </div>
-              <div
-                x-show="assignmentsHavePagination()"
-                class="mt-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div class="text-sm text-slate-600 tabular-nums" x-text="'共 ' + (assignments.total || 0) + ' 条 / 第 ' + (assignments.page || 1) + ' 页，共 ' + (assignments.total_pages || 1) + ' 页'"></div>
-                <div class="flex flex-wrap items-center gap-2">
-                  <button
-                    @click="changeAssignmentsPage(1)"
-                    type="button"
-                    :disabled="!canGoToPreviousAssignmentsPage()"
-                    :class="assignmentPaginationButtonClass(!canGoToPreviousAssignmentsPage())"
-                  >首页</button>
-                  <button
-                    @click="changeAssignmentsPage(currentAssignmentsPage() - 1)"
-                    type="button"
-                    :disabled="!canGoToPreviousAssignmentsPage()"
-                    :class="assignmentPaginationButtonClass(!canGoToPreviousAssignmentsPage())"
-                  >上一页</button>
-                  <button
-                    @click="changeAssignmentsPage(currentAssignmentsPage() + 1)"
-                    type="button"
-                    :disabled="!canGoToNextAssignmentsPage()"
-                    :class="assignmentPaginationButtonClass(!canGoToNextAssignmentsPage())"
-                  >下一页</button>
-                  <button
-                    @click="changeAssignmentsPage(assignmentTotalPages())"
-                    type="button"
-                    :disabled="!canGoToNextAssignmentsPage()"
-                    :class="assignmentPaginationButtonClass(!canGoToNextAssignmentsPage())"
-                  >末页</button>
-                </div>
-              </div>
-            </section>
+  <section x-show="adminCompactPanelVisible('assignments', 'list')" class="admin-r-surface">
+    <header class="admin-r-header">
+      <div>
+        <h2 class="admin-r-title">邀约与答题</h2>
+        <p class="admin-r-subtitle">跟踪邀请、验证、作答、判卷和待处理状态。</p>
+      </div>
+      <span class="admin-r-pill" :class="unhandledAssignmentCount() ? 'admin-r-pill--warn' : 'admin-r-pill--ok'">
+        未处理 <span class="ml-1 tabular-nums" x-text="unhandledAssignmentCount()"></span>
+      </span>
+    </header>
 
-            <section
-              x-show="adminCompactPanelVisible('assignments', 'create')"
-              class="admin-surface admin-right-pane rounded-3xl border border-white/70 bg-white/82 p-5 shadow-[var(--admin-shadow)] backdrop-blur-xl"
-            >
-              <h2 class="text-xl font-semibold tracking-[-0.03em] text-slate-900">创建邀约</h2>
-              <div class="admin-right-pane__body">
-                <div class="mt-4 space-y-4">
-                  <label class="block">
-                  <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">测验</span>
-                  <div class="relative" @click.outside="closeAssignmentSelect('quiz')">
-                    <div class="flex items-center gap-2 rounded-lg border border-blue-100 bg-white px-4 py-3 transition focus-within:border-blue-300">
-                      <input
-                        :value="assignmentSelectDisplayValue('quiz')"
-                        @focus="openAssignmentSelect('quiz')"
-                        @input="handleAssignmentSelectInput('quiz', $event)"
-                        type="text"
-                        class="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                        placeholder="请选择测验"
-                      />
-                      <button
-                        x-show="selectedAssignmentQuiz()"
-                        @click.stop="clearAssignmentQuiz()"
-                        type="button"
-                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                      >
-                        <span class="material-symbols-rounded text-base">close</span>
-                      </button>
-                      <button
-                        @click.stop="toggleAssignmentSelect('quiz')"
-                        type="button"
-                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
-                      >
-                        <span class="material-symbols-rounded text-base">expand_more</span>
-                      </button>
-                    </div>
-                    <div x-show="assignmentSelect.quiz.open" x-cloak class="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
-                      <div class="max-h-72 overflow-auto">
-                        <template x-for="item in filteredAssignmentQuizzes()" :key="item.quiz_key">
-                          <button @click="selectAssignmentQuiz(item)" type="button" class="block w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-blue-50/50">
-                            <div class="flex flex-wrap items-center gap-2">
-                              <span class="inline-flex max-w-full items-center rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                                <span class="truncate" x-text="item.title || item.quiz_key"></span>
-                              </span>
-                              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500" x-text="'预计 ' + (item.estimated_duration_minutes || 0) + ' 分钟'"></span>
-                            </div>
-                            <div class="mt-2 font-mono text-[11px] text-slate-500" x-text="item.quiz_key"></div>
-                          </button>
-                        </template>
-                        <div x-show="!filteredAssignmentQuizzes().length" class="px-4 py-6 text-center text-sm text-slate-500">未找到匹配测验</div>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-                <label class="block">
-                  <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">候选人</span>
-                  <div class="relative" @click.outside="closeAssignmentSelect('candidate')">
-                    <div class="flex items-center gap-2 rounded-lg border border-blue-100 bg-white px-4 py-3 transition focus-within:border-blue-300">
-                      <input
-                        :value="assignmentSelectDisplayValue('candidate')"
-                        @focus="openAssignmentSelect('candidate')"
-                        @input="handleAssignmentSelectInput('candidate', $event)"
-                        type="text"
-                        class="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                        placeholder="请选择候选人"
-                      />
-                      <button
-                        x-show="selectedAssignmentCandidate()"
-                        @click.stop="clearAssignmentCandidate()"
-                        type="button"
-                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                      >
-                        <span class="material-symbols-rounded text-base">close</span>
-                      </button>
-                      <button
-                        @click.stop="toggleAssignmentSelect('candidate')"
-                        type="button"
-                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
-                      >
-                        <span class="material-symbols-rounded text-base">expand_more</span>
-                      </button>
-                    </div>
-                    <div x-show="assignmentSelect.candidate.open" x-cloak class="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
-                      <div class="max-h-72 overflow-auto">
-                        <template x-for="item in filteredAssignmentCandidates()" :key="item.id">
-                          <button @click="selectAssignmentCandidate(item)" type="button" class="block w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-emerald-50/40">
-                            <div class="flex flex-wrap items-center gap-2">
-                              <span class="inline-flex max-w-full items-center rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                                <span class="truncate" x-text="item.name"></span>
-                              </span>
-                            </div>
-                            <div class="mt-2 font-mono text-[11px] text-slate-500" x-text="item.phone"></div>
-                          </button>
-                        </template>
-                        <div x-show="!filteredAssignmentCandidates().length" class="px-4 py-6 text-center text-sm text-slate-500">未找到匹配候选人</div>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <label class="block">
-                    <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">开始日期</span>
-                    <input x-model="assignmentForm.invite_start_date" type="date" class="w-full rounded-lg border border-blue-100 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300" />
-                  </label>
-                  <label class="block">
-                    <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">结束日期</span>
-                    <input x-model="assignmentForm.invite_end_date" type="date" class="w-full rounded-lg border border-blue-100 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300" />
-                  </label>
-                </div>
-                <div class="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-slate-700">
-                  <div class="font-semibold text-slate-900">答题总时长自动按题目累计</div>
-                  <p class="mt-1 text-xs leading-5 text-slate-500">创建邀约时不再手填整卷时限，系统会按每道题的 <span class="font-mono">answer_time</span> 自动累计总答题时长并在答题端生效。</p>
-                </div>
-                <label class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-slate-700">
-                  <input x-model="assignmentForm.ignore_timing" type="checkbox" class="mt-1 h-4 w-4 rounded border-amber-200 text-amber-700 focus:ring-blue-500" />
-                  <span>
-                    <span class="block font-semibold text-slate-900">忽略计时</span>
-                    <span class="mt-1 block text-xs leading-5 text-slate-500">开启后，本次邀约不限作答时长，但仍保持顺序答题和不可回退的规则。</span>
-                  </span>
-                </label>
-                <label class="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm text-slate-700">
-                  <input x-model="assignmentForm.require_phone_verification" type="checkbox" class="mt-1 h-4 w-4 rounded border-blue-200 text-blue-600 focus:ring-blue-500" />
-                  <span>
-                    <span class="block font-semibold text-slate-900">要求短信手机号认证</span>
-                    <span class="mt-1 block text-xs leading-5 text-slate-500">开启后，候选人需先填写姓名、手机号并完成短信验证码校验，才能开始答题。</span>
-                  </span>
-                </label>
-                <button @click="createAssignment" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
-                  <span class="material-symbols-rounded text-base">assignment_add</span>
-                  创建邀请链接
+    <div class="grid grid-cols-3 border-b border-blue-100/70">
+      <div class="admin-r-section">
+        <div class="admin-r-label">邀约记录</div>
+        <div class="mt-2 text-3xl tabular-nums text-slate-950" x-text="assignments.total || (assignments.items || []).length"></div>
+      </div>
+      <div class="admin-r-section">
+        <div class="admin-r-label">待处理</div>
+        <div class="mt-2 text-3xl tabular-nums text-slate-950" x-text="unhandledAssignmentCount()"></div>
+      </div>
+      <div class="admin-r-section">
+        <div class="admin-r-label">当前页</div>
+        <div class="mt-2 text-3xl tabular-nums text-slate-950">
+          <span x-text="currentAssignmentsPage()"></span>
+          <span class="text-base text-slate-400">/</span>
+          <span x-text="assignmentTotalPages()"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-r-toolbar xl:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_minmax(0,0.78fr)_minmax(0,0.78fr)]">
+      <label class="admin-r-field flex-[1_1_13rem]">
+        <span>搜索</span>
+        <input x-model="filters.assignments.q" @input="scheduleAssignmentsReloadFromFirstPage" class="admin-r-input" placeholder="姓名 / 手机号 / token" />
+      </label>
+      <div class="admin-r-field flex-[1.4_1_18rem]">
+        <span>测验</span>
+        <div class="relative" data-assignment-quiz-filter="tag-select" @click.outside="closeAssignmentQuizFilter()">
+          <div @click="openAssignmentQuizFilter()" class="flex h-[42px] max-w-full flex-nowrap items-center gap-2 overflow-hidden rounded-lg border border-blue-100 bg-white px-3 py-0 transition focus-within:border-blue-300" role="combobox" :aria-expanded="String(assignmentFilterSelect.quiz.open)" aria-label="按测验筛选邀约与答题">
+            <template x-if="selectedAssignmentFilterQuiz()">
+              <span class="inline-flex h-7 min-w-0 max-w-[calc(100%-5.25rem)] shrink-0 items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 text-xs text-blue-700">
+                <span class="truncate" x-text="assignmentQuizFilterLabel(selectedAssignmentFilterQuiz())"></span>
+                <button @click.stop="clearAssignmentQuizFilter()" type="button" class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-blue-500 transition hover:bg-blue-100 hover:text-blue-700" aria-label="清除测验筛选">
+                  <span class="material-symbols-rounded text-[14px] leading-none">close</span>
                 </button>
-                </div>
-              </div>
-            </section>
+              </span>
+            </template>
+            <input
+              x-model="assignmentFilterSelect.quiz.query"
+              @focus="openAssignmentQuizFilter()"
+              @input="scheduleAssignmentQuizFilterSearch($event)"
+              @keydown.enter.prevent="selectFirstAssignmentQuizFilterMatch()"
+              @keydown.backspace="handleAssignmentQuizFilterBackspace($event)"
+              @keydown.escape.prevent="closeAssignmentQuizFilter()"
+              type="text"
+              class="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              :placeholder="assignmentQuizFilterPlaceholder()"
+            />
+            <button @click.stop="toggleAssignmentQuizFilter()" type="button" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100" aria-label="展开测验筛选">
+              <span class="material-symbols-rounded text-base">expand_more</span>
+            </button>
           </div>
+          <div x-show="assignmentFilterSelect.quiz.open" x-cloak class="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
+            <div class="max-h-72 overflow-auto">
+              <button @click="clearAssignmentQuizFilter()" type="button" class="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-blue-50/70 hover:text-slate-900">全部测验</button>
+              <div class="border-b border-slate-100 bg-slate-50/80 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-slate-500" x-text="assignmentQuizFilterHeaderLabel()"></div>
+              <div x-show="assignmentQuizFilterOptions.loading" class="px-4 py-5 text-center text-sm text-slate-500">正在检索测验</div>
+              <template x-for="item in filteredAssignmentQuizFilterOptions()" :key="item.quiz_key">
+                <button @click="selectAssignmentQuizFilter(item)" type="button" class="block w-full border-b px-4 py-3 text-left transition last:border-b-0" :class="assignmentQuizFilterOptionClass(item)">
+                  <div class="truncate text-sm" x-text="item.title || item.quiz_key"></div>
+                  <div class="mt-1 truncate admin-r-code" x-text="item.quiz_key"></div>
+                </button>
+              </template>
+              <div x-show="!assignmentQuizFilterOptions.loading && !filteredAssignmentQuizFilterOptions().length" class="px-4 py-6 text-center text-sm text-slate-500" x-text="assignmentQuizFilterEmptyLabel()"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <label class="admin-r-field flex-[0.8_1_9rem]">
+        <span>开始时间</span>
+        <input x-model="filters.assignments.start_from" @change="reloadAssignmentsFromFirstPage" type="date" class="admin-r-input" />
+      </label>
+      <label class="admin-r-field flex-[0.8_1_9rem]">
+        <span>结束时间</span>
+        <input x-model="filters.assignments.end_to" @change="reloadAssignmentsFromFirstPage" type="date" class="admin-r-input" />
+      </label>
+    </div>
+
+    <div>
+      <div class="admin-r-table-head grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_10rem] gap-3">
+        <span>候选人 / 测验</span>
+        <span>状态</span>
+        <span>得分</span>
+        <span>处理</span>
+        <span>操作</span>
+      </div>
+      <template x-for="item in assignments.items" :key="item.attempt_id">
+        <div @click="go('/admin/attempt/' + item.token)" @keydown.enter.prevent="go('/admin/attempt/' + item.token)" tabindex="0" role="button" class="admin-r-row grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_10rem] items-center gap-3">
+          <span class="min-w-0">
+            <span class="admin-r-row-title" x-text="item.candidate_name"></span>
+            <span class="admin-r-row-meta">
+              <span x-text="item.quiz_key"></span>
+              <span class="mx-1 text-slate-300">·</span>
+              <span class="admin-r-code" x-text="item.token"></span>
+            </span>
+          </span>
+          <span class="flex flex-wrap gap-1.5">
+            <span :class="assignmentSourceBadgeClass()" x-text="item.source_label"></span>
+            <span :class="assignmentStatusBadgeClass(item)" x-text="item.status_label"></span>
+          </span>
+          <span class="text-sm tabular-nums text-slate-700" x-text="item.score_display || '-'"></span>
+          <span>
+            <span x-show="canToggleAssignmentHandling(item)" :class="assignmentHandlingBadgeClass(item)" x-text="assignmentHandlingLabel(item)"></span>
+            <span x-show="assignmentIgnoresTiming(item)" class="admin-r-pill admin-r-pill--warn mt-1">忽略计时</span>
+          </span>
+          <span class="flex flex-wrap gap-1.5">
+            <button @click.stop="go('/admin/attempt/' + item.token)" type="button" :class="assignmentActionButtonClass('detail', item)">详情</button>
+            <button x-show="canToggleAssignmentHandling(item)" @click.stop="toggleAssignmentHandling(item)" type="button" :class="assignmentActionButtonClass('handling', item)" x-text="assignmentHandlingActionLabel(item)"></button>
+            <button x-show="canDeleteAssignment(item)" @click.stop="deleteAssignment(item)" type="button" :class="assignmentActionButtonClass('danger', item)">删除</button>
+          </span>
+          <span class="col-span-full mt-1 flex min-w-0 items-center gap-2 border-t border-blue-100/60 pt-2">
+            <span class="admin-r-label">URL</span>
+            <button @click.stop="copyAssignmentUrl(item)" type="button" class="min-w-0 truncate admin-r-code text-left underline decoration-dotted underline-offset-2" x-text="item.url || '-'"></button>
+            <button @click.stop="copyAssignmentQr(item)" type="button" class="admin-r-button min-h-7 px-2 text-[11px]" title="复制二维码">QR</button>
+          </span>
+        </div>
+      </template>
+      <div x-show="!(assignments.items || []).length" class="admin-r-empty">当前筛选条件下没有邀约记录</div>
+    </div>
+
+    <div x-show="assignmentsHavePagination()" class="admin-r-section flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-sm text-slate-600 tabular-nums" x-text="'共 ' + (assignments.total || 0) + ' 条 / 第 ' + (assignments.page || 1) + ' 页，共 ' + (assignments.total_pages || 1) + ' 页'"></div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button @click="changeAssignmentsPage(1)" type="button" :disabled="!canGoToPreviousAssignmentsPage()" :class="assignmentPaginationButtonClass(!canGoToPreviousAssignmentsPage())">首页</button>
+        <button @click="changeAssignmentsPage(currentAssignmentsPage() - 1)" type="button" :disabled="!canGoToPreviousAssignmentsPage()" :class="assignmentPaginationButtonClass(!canGoToPreviousAssignmentsPage())">上一页</button>
+        <button @click="changeAssignmentsPage(currentAssignmentsPage() + 1)" type="button" :disabled="!canGoToNextAssignmentsPage()" :class="assignmentPaginationButtonClass(!canGoToNextAssignmentsPage())">下一页</button>
+        <button @click="changeAssignmentsPage(assignmentTotalPages())" type="button" :disabled="!canGoToNextAssignmentsPage()" :class="assignmentPaginationButtonClass(!canGoToNextAssignmentsPage())">末页</button>
+      </div>
+    </div>
+  </section>
+
+  <aside x-show="adminCompactPanelVisible('assignments', 'create')" class="admin-r-surface">
+    <header class="admin-r-header">
+      <div>
+        <h2 class="admin-r-title">创建邀约</h2>
+        <p class="admin-r-subtitle">选择测验与候选人，生成答题入口。</p>
+      </div>
+    </header>
+    <div class="admin-r-section admin-r-grid">
+      <label class="admin-r-field">
+        <span>测验</span>
+        <div class="relative" @click.outside="closeAssignmentSelect('quiz')">
+          <div class="flex min-h-[2.55rem] items-center gap-2 rounded-lg border border-blue-100 bg-white px-3 transition focus-within:border-blue-300">
+            <input :value="assignmentSelectDisplayValue('quiz')" @focus="openAssignmentSelect('quiz')" @input="handleAssignmentSelectInput('quiz', $event)" type="text" class="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" placeholder="请选择测验" />
+            <button x-show="selectedAssignmentQuiz()" @click.stop="clearAssignmentQuiz()" type="button" class="grid h-7 w-7 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><span class="material-symbols-rounded text-base">close</span></button>
+            <button @click.stop="toggleAssignmentSelect('quiz')" type="button" class="grid h-7 w-7 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100"><span class="material-symbols-rounded text-base">expand_more</span></button>
+          </div>
+          <div x-show="assignmentSelect.quiz.open" x-cloak class="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
+            <div class="max-h-72 overflow-auto">
+              <template x-for="item in filteredAssignmentQuizzes()" :key="item.quiz_key">
+                <button @click="selectAssignmentQuiz(item)" type="button" class="block w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-blue-50/50">
+                  <div class="truncate text-sm text-slate-800" x-text="item.title || item.quiz_key"></div>
+                  <div class="mt-1 admin-r-code" x-text="item.quiz_key"></div>
+                </button>
+              </template>
+              <div x-show="!filteredAssignmentQuizzes().length" class="px-4 py-6 text-center text-sm text-slate-500">未找到匹配测验</div>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <label class="admin-r-field">
+        <span>候选人</span>
+        <div class="relative" @click.outside="closeAssignmentSelect('candidate')">
+          <div class="flex min-h-[2.55rem] items-center gap-2 rounded-lg border border-blue-100 bg-white px-3 transition focus-within:border-blue-300">
+            <input :value="assignmentSelectDisplayValue('candidate')" @focus="openAssignmentSelect('candidate')" @input="handleAssignmentSelectInput('candidate', $event)" type="text" class="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" placeholder="请选择候选人" />
+            <button x-show="selectedAssignmentCandidate()" @click.stop="clearAssignmentCandidate()" type="button" class="grid h-7 w-7 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"><span class="material-symbols-rounded text-base">close</span></button>
+            <button @click.stop="toggleAssignmentSelect('candidate')" type="button" class="grid h-7 w-7 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100"><span class="material-symbols-rounded text-base">expand_more</span></button>
+          </div>
+          <div x-show="assignmentSelect.candidate.open" x-cloak class="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
+            <div class="max-h-72 overflow-auto">
+              <template x-for="item in filteredAssignmentCandidates()" :key="item.id">
+                <button @click="selectAssignmentCandidate(item)" type="button" class="block w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-emerald-50/40">
+                  <div class="truncate text-sm text-slate-800" x-text="item.name"></div>
+                  <div class="mt-1 admin-r-code" x-text="item.phone"></div>
+                </button>
+              </template>
+              <div x-show="!filteredAssignmentCandidates().length" class="px-4 py-6 text-center text-sm text-slate-500">未找到匹配候选人</div>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <div class="admin-r-grid admin-r-grid--2">
+        <label class="admin-r-field">
+          <span>开始日期</span>
+          <input x-model="assignmentForm.invite_start_date" type="date" class="admin-r-input" />
+        </label>
+        <label class="admin-r-field">
+          <span>结束日期</span>
+          <input x-model="assignmentForm.invite_end_date" type="date" class="admin-r-input" />
+        </label>
+      </div>
+
+      <div class="admin-r-note">
+        <span class="block text-slate-800">答题总时长自动按题目累计</span>
+        <span class="mt-1 block text-xs text-slate-500">系统按每道题的 answer_time 累计总时长。</span>
+      </div>
+
+      <label class="admin-r-note flex items-start gap-3">
+        <input x-model="assignmentForm.ignore_timing" type="checkbox" class="mt-1 h-4 w-4 rounded border-amber-200 text-amber-700 focus:ring-blue-500" />
+        <span>
+          <span class="block text-slate-900">忽略计时</span>
+          <span class="mt-1 block text-xs text-slate-500">不限作答时长，但保留顺序答题和不可回退规则。</span>
+        </span>
+      </label>
+      <label class="admin-r-note flex items-start gap-3">
+        <input x-model="assignmentForm.require_phone_verification" type="checkbox" class="mt-1 h-4 w-4 rounded border-blue-200 text-blue-600 focus:ring-blue-500" />
+        <span>
+          <span class="block text-slate-900">要求短信手机号认证</span>
+          <span class="mt-1 block text-xs text-slate-500">候选人需完成短信验证码校验后开始答题。</span>
+        </span>
+      </label>
+
+      <button @click="createAssignment" type="button" class="admin-r-button admin-r-button--primary justify-self-start">
+        <span class="material-symbols-rounded text-base">assignment_add</span>
+        创建邀请链接
+      </button>
+    </div>
+  </aside>
+</div>

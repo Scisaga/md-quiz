@@ -1,0 +1,138 @@
+<div x-show="route.name === 'dashboard'" class="admin-r-workspace admin-r-workspace--wide">
+  <section class="admin-r-surface">
+    <header class="admin-r-header">
+      <div>
+        <h2 class="admin-r-title">总览工作台</h2>
+        <p class="admin-r-subtitle">关键指标、最近答题和同步任务的入口。</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="admin-r-pill" :class="dashboardSystemLevelClass()">
+          <span class="h-2 w-2 rounded-full bg-current"></span>
+          <span x-text="dashboardSystemLevelLabel()"></span>
+        </span>
+        <button type="button" @click="loadDashboard" class="admin-r-button">
+          <span class="material-symbols-rounded text-[18px]" :class="dashboard.loading ? 'animate-spin' : ''">refresh</span>
+          刷新
+        </button>
+      </div>
+    </header>
+
+    <div class="admin-r-section">
+      <p x-show="dashboard.error" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" x-text="dashboard.error"></p>
+      <div class="admin-r-grid admin-r-grid--4">
+        <template x-for="card in dashboardKpiCards()" :key="card.label">
+          <article class="admin-r-kpi">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="admin-r-label" x-text="card.label"></div>
+                <div class="admin-r-value tabular-nums" x-text="card.value"></div>
+              </div>
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border" :class="dashboardKpiToneClass(card.tone)">
+                <span class="material-symbols-rounded text-[22px]" x-text="card.icon"></span>
+              </span>
+            </div>
+            <p class="admin-r-hint" x-text="card.hint"></p>
+          </article>
+        </template>
+      </div>
+    </div>
+
+    <section class="admin-r-section">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="admin-r-title">最近答题</h3>
+          <p class="admin-r-subtitle">来自邀约列表第一页，按最近更新时间展示。</p>
+        </div>
+        <button @click="go('/admin/assignments')" type="button" class="admin-r-button admin-r-button--soft">查看全部</button>
+      </div>
+    </section>
+
+    <div class="overflow-x-auto">
+      <div class="admin-r-table-head min-w-[720px] grid-cols-[minmax(10rem,1fr)_minmax(16rem,1.4fr)_7rem_8rem_2rem] gap-3">
+        <span>候选人</span>
+        <span>测验</span>
+        <span>状态</span>
+        <span>时间</span>
+        <span></span>
+      </div>
+      <div class="min-w-[720px]">
+        <template x-for="item in dashboardAssignmentItems()" :key="item.token">
+          <button type="button" @click="go('/admin/attempt/' + encodeURIComponent(item.token))" class="admin-r-row grid-cols-[minmax(10rem,1fr)_minmax(16rem,1.4fr)_7rem_8rem_2rem] items-center gap-3">
+            <span class="admin-r-row-title" x-text="item.candidate_name || '未命名候选人'"></span>
+            <span class="min-w-0">
+              <span class="block truncate text-sm text-slate-700" x-text="item.quiz_title || item.quiz_key || '未命名测验'"></span>
+              <span class="admin-r-row-meta admin-r-code" x-text="item.token"></span>
+            </span>
+            <span class="admin-r-pill" :class="dashboardAssignmentStatusClass(item)" x-text="dashboardAssignmentStatusLabel(item)"></span>
+            <span class="admin-r-code tabular-nums" x-text="formatDateTime(item.updated_at || item.finished_at || item.created_at) || '-'"></span>
+            <span class="material-symbols-rounded text-[18px] text-slate-400">chevron_right</span>
+          </button>
+        </template>
+      </div>
+      <div x-show="!dashboardAssignmentItems().length" class="admin-r-empty">暂无答题记录</div>
+    </div>
+  </section>
+
+  <aside class="grid gap-3">
+    <section class="admin-r-surface">
+      <header class="admin-r-header">
+        <div>
+          <h2 class="admin-r-title">同步与任务</h2>
+          <p class="admin-r-subtitle">题库同步、公开邀约和待处理概览。</p>
+        </div>
+        <button @click="go('/admin/quizzes')" type="button" class="admin-r-button">管理</button>
+      </header>
+      <div class="admin-r-section">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm text-slate-800">题库同步</span>
+          <span class="admin-r-pill admin-r-pill--info">
+            <span class="material-symbols-rounded text-[16px]" x-text="dashboardSyncSummary().icon || 'sync'"></span>
+            <span x-text="dashboardSyncSummary().label"></span>
+          </span>
+        </div>
+        <p class="mt-2 truncate text-xs text-slate-500" x-text="dashboardSyncSummary().detail || '暂无最近同步记录'"></p>
+      </div>
+      <div class="grid grid-cols-2 border-t border-blue-100/70">
+        <div class="p-4">
+          <div class="admin-r-label">公开邀约</div>
+          <div class="mt-2 text-3xl tabular-nums text-slate-950" x-text="formatNumber(dashboardPublicInviteCount())"></div>
+        </div>
+        <div class="border-l border-blue-100/70 p-4">
+          <div class="admin-r-label">待处理</div>
+          <div class="mt-2 text-3xl tabular-nums text-slate-950" x-text="formatNumber(dashboardUnhandledAssignments())"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-r-surface">
+      <header class="admin-r-header">
+        <div>
+          <h2 class="admin-r-title">系统检查器</h2>
+          <p class="admin-r-subtitle">运行依赖与配置状态。</p>
+        </div>
+      </header>
+      <template x-for="row in dashboardServiceRows()" :key="row.key">
+        <div class="admin-r-row grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+          <span class="grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600">
+            <span class="material-symbols-rounded text-[20px]" x-text="row.icon"></span>
+          </span>
+          <span class="min-w-0">
+            <span class="admin-r-row-title" x-text="row.label"></span>
+            <span class="admin-r-row-meta" x-text="row.missingText || '配置可用'"></span>
+          </span>
+          <span class="admin-r-pill" :class="row.configured ? 'admin-r-pill--ok' : 'admin-r-pill--danger'" x-text="row.configured ? '正常' : '缺失'"></span>
+        </div>
+      </template>
+      <div class="admin-r-section">
+        <div class="admin-r-label">最近刷新</div>
+        <div class="mt-2 admin-r-code tabular-nums" x-text="formatDateTime(dashboard.updatedAt) || '尚未刷新'"></div>
+      </div>
+      <div class="admin-r-section">
+        <button @click="go('/admin/status')" type="button" class="admin-r-button w-full">
+          <span class="material-symbols-rounded text-[18px]">monitoring</span>
+          查看系统状态
+        </button>
+      </div>
+    </section>
+  </aside>
+</div>

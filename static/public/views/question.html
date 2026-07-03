@@ -1,6 +1,6 @@
 <section
               x-show="viewCard === 'question'"
-              class="mx-auto max-w-4xl space-y-6 py-2 sm:py-4"
+              class="mx-auto max-w-4xl space-y-5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-2 sm:space-y-6 sm:py-4"
               @touchstart="onQuestionTouchStart($event)"
               @touchend="onQuestionTouchEnd($event)"
             >
@@ -14,7 +14,7 @@
                     <button
                       type="button"
                       @click="selectSingleOption(option.key)"
-                      class="flex w-full items-center gap-3 rounded-lg border px-4 py-4 text-left text-sm transition"
+                      class="flex w-full items-center gap-3 rounded-xl border px-4 py-4 text-left text-sm transition"
                       :class="isSingleSelected(option.key) ? 'border-emerald-300/50 bg-emerald-400/10 text-white' : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/8'"
                     >
                       <span
@@ -33,7 +33,7 @@
                     <button
                       type="button"
                       @click="toggleMultipleOption(option.key)"
-                      class="flex w-full items-center gap-3 rounded-lg border px-4 py-4 text-left text-sm transition"
+                      class="flex w-full items-center gap-3 rounded-xl border px-4 py-4 text-left text-sm transition"
                       :class="isMultipleSelected(option.key) ? 'border-emerald-300/50 bg-emerald-400/10 text-white' : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/8'"
                     >
                       <span
@@ -47,7 +47,7 @@
                   </template>
                 </div>
 
-                <div x-show="currentQuestion()?.type === 'short'" class="mt-4 overflow-hidden rounded-lg border border-white/10 bg-white/6">
+                <div x-show="currentQuestion()?.type === 'short'" class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-white/6">
                   <textarea
                     x-model="textDraft"
                     @input="onTextInput"
@@ -57,20 +57,20 @@
                 </div>
               </div>
 
-              <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+              <div class="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-20 mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/88 px-4 py-3 shadow-[0_18px_54px_rgba(2,6,23,0.34)] backdrop-blur-xl sm:static sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none sm:backdrop-blur-0">
                 <div class="text-sm text-slate-300">
                   <div x-show="currentQuestion()?.type === 'single'">选择选项后会自动进入下一题。</div>
                   <div x-show="currentQuestion()?.type === 'multiple'">选择完成后点击“下一题”，或上滑卡片进入下一题。</div>
                   <div x-show="currentQuestion()?.type === 'short'">简答完成后点击“完成本题”，或上滑卡片进入下一题。</div>
                   <div class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500" x-text="autosaveText()"></div>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex w-full items-center gap-3 sm:w-auto">
                   <button
                     x-show="currentQuestion()?.type !== 'single' && !isLastQuestion()"
                     type="button"
                     @click="goNext"
                     :disabled="!canAdvanceCurrent() || actionBusy"
-                    class="rounded-md px-5 py-3 text-sm font-semibold transition"
+                    class="min-h-11 flex-1 rounded-lg px-5 py-3 text-sm font-semibold transition sm:flex-none"
                     :class="canAdvanceCurrent() && !actionBusy ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300' : 'cursor-not-allowed border border-white/10 bg-white/6 text-slate-400'"
                     x-text="currentQuestion()?.type === 'short' ? '完成本题' : '下一题'"
                   >
@@ -80,7 +80,7 @@
                     type="button"
                     @click="submitLastQuestion"
                     :disabled="!canAdvanceCurrent() || actionBusy"
-                    class="rounded-md px-5 py-3 text-sm font-semibold transition"
+                    class="min-h-11 flex-1 rounded-lg px-5 py-3 text-sm font-semibold transition sm:flex-none"
                     :class="canAdvanceCurrent() && !actionBusy ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300' : 'cursor-not-allowed border border-white/10 bg-white/6 text-slate-400'"
                     x-text="currentQuestion()?.type === 'short' ? '完成并提交' : '提交测验'"
                   >

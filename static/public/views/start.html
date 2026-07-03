@@ -2,7 +2,7 @@
               <div class="space-y-6 sm:space-y-8">
                 <div :class="isVerifyStep() ? 'mx-auto max-w-2xl space-y-3 text-center sm:space-y-4' : 'max-w-3xl space-y-3 sm:space-y-4'">
                   <div class="text-xs uppercase tracking-[0.28em] text-cyan-200/80" x-text="startLeadEyebrow()"></div>
-                  <h1 class="text-[2.7rem] leading-[0.96] font-medium tracking-[-0.06em] text-white sm:mt-4 sm:text-6xl" x-text="quizTitle()"></h1>
+                  <h1 class="text-[2.7rem] leading-[0.96] font-medium text-white sm:mt-4 sm:text-6xl" x-text="quizTitle()"></h1>
                   <p class="text-sm leading-6 text-slate-300 sm:leading-7" x-text="startLeadText()"></p>
                 </div>
 
@@ -74,11 +74,11 @@
                         <div x-show="state.verify?.mode !== 'direct_phone'" class="mt-5 grid gap-4 sm:grid-cols-2">
                           <label class="block">
                             <span class="mb-2 block text-xs uppercase tracking-[0.22em] text-slate-400">姓名</span>
-                            <input x-model="forms.verify.name" class="w-full rounded-md border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/40" placeholder="输入姓名" />
+                            <input x-model="forms.verify.name" class="w-full rounded-lg border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/40" placeholder="输入姓名" />
                           </label>
                           <label class="block">
                             <span class="mb-2 block text-xs uppercase tracking-[0.22em] text-slate-400">手机号</span>
-                            <input x-model="forms.verify.phone" class="w-full rounded-md border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/40" placeholder="输入手机号" />
+                            <input x-model="forms.verify.phone" class="w-full rounded-lg border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/40" placeholder="输入手机号" />
                           </label>
                         </div>
 
@@ -112,7 +112,7 @@
                             type="button"
                             @click="sendSms"
                             :disabled="smsSendButtonDisabled()"
-                            class="inline-flex h-11 shrink-0 items-center justify-center self-start whitespace-nowrap rounded-lg border px-4 text-sm font-semibold transition sm:self-auto"
+                            class="inline-flex h-11 shrink-0 items-center justify-center self-start whitespace-nowrap rounded-xl border px-4 text-sm font-semibold transition sm:self-auto"
                             :class="smsSendButtonClasses()"
                             x-text="smsSendButtonText()"
                           ></button>
@@ -120,7 +120,7 @@
 
                         <div
                           x-show="smsFeedback.message"
-                          class="mt-4 rounded-md border px-4 py-3 text-sm"
+                          class="mt-4 rounded-lg border px-4 py-3 text-sm"
                           :class="smsFeedbackClasses()"
                           x-text="smsFeedback.message"
                         ></div>
@@ -133,7 +133,7 @@
                   <div class="space-y-5 sm:space-y-8">
                     <div
                       x-show="state.quiz?.spec?.welcome_image"
-                      class="overflow-hidden rounded-lg border border-white/10 bg-white/6"
+                      class="overflow-hidden rounded-xl border border-white/10 bg-white/6"
                     >
                       <img
                         :src="state.quiz?.spec?.welcome_image || ''"
@@ -142,7 +142,7 @@
                       />
                     </div>
 
-                    <div class="rounded-lg border border-white/10 bg-white/6">
+                    <div class="rounded-xl border border-white/10 bg-white/6">
                       <div class="grid grid-cols-2 divide-x divide-white/10">
                         <div class="px-4 py-4 sm:px-5 sm:py-5">
                           <div class="text-xs uppercase tracking-[0.22em] text-slate-400">总题数</div>
@@ -156,7 +156,7 @@
                     </div>
 
                     <div class="grid gap-3 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
-                      <div class="rounded-lg border border-white/10 bg-slate-950/55 px-4 py-4 sm:px-5 sm:py-5">
+                      <div class="rounded-xl border border-white/10 bg-slate-950/55 px-4 py-4 sm:px-5 sm:py-5">
                         <div class="text-xs uppercase tracking-[0.22em] text-slate-400">作答提示</div>
                         <div class="mt-3 space-y-2 text-sm leading-6 text-slate-200/88 sm:mt-4 sm:space-y-3 sm:leading-7">
                           <p>开始后将按顺序进入题目，系统会自动记录当前进度。</p>
@@ -165,13 +165,13 @@
                         </div>
                       </div>
 
-                      <div class="rounded-lg border border-white/10 bg-white/6 px-4 py-4 sm:px-5 sm:py-5">
+                      <div class="rounded-xl border border-white/10 bg-white/6 px-4 py-4 sm:px-5 sm:py-5">
                         <div class="space-y-3 sm:space-y-4">
                           <div>
                             <div class="text-sm font-semibold text-white">准备开始</div>
                             <p class="mt-1 text-sm leading-6 text-slate-300 sm:mt-2 sm:leading-7">确认后立即进入第 1 题。</p>
                           </div>
-                          <button type="button" @click="enterQuiz" class="w-full rounded-md bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300">确认开始答题</button>
+                          <button type="button" @click="enterQuiz" class="w-full rounded-lg bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300">确认开始答题</button>
                         </div>
                       </div>
                     </div>

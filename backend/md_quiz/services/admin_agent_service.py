@@ -802,6 +802,7 @@ class AdminAgentService:
         self,
         *,
         query: str = "",
+        quiz_key: str = "",
         start_from: str = "",
         start_to: str = "",
         end_from: str = "",
@@ -811,8 +812,10 @@ class AdminAgentService:
         include_sensitive: bool = False,
     ) -> dict[str, Any]:
         page_size = max(1, min(100, int(per_page or 20)))
+        quiz_key_filter = str(quiz_key or "").strip() or None
         total = deps.count_quiz_papers(
             query=query or None,
+            quiz_key=quiz_key_filter,
             invite_start_from=(str(start_from or "").strip() or None),
             invite_start_to=(str(start_to or "").strip() or None),
             invite_end_from=(str(end_from or "").strip() or None),
@@ -823,6 +826,7 @@ class AdminAgentService:
         offset = (current_page - 1) * page_size
         rows = deps.list_quiz_papers(
             query=query or None,
+            quiz_key=quiz_key_filter,
             invite_start_from=(str(start_from or "").strip() or None),
             invite_start_to=(str(start_to or "").strip() or None),
             invite_end_from=(str(end_from or "").strip() or None),
@@ -836,6 +840,7 @@ class AdminAgentService:
                 "unhandled_finished_count": int(
                     deps.count_unhandled_finished_quiz_papers(
                         query=query or None,
+                        quiz_key=quiz_key_filter,
                         invite_start_from=(str(start_from or "").strip() or None),
                         invite_start_to=(str(start_to or "").strip() or None),
                         invite_end_from=(str(end_from or "").strip() or None),

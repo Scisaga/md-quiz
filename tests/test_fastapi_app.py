@@ -646,12 +646,18 @@ def _stub_public_resume_parsing(monkeypatch, *, parsed_name: str, parsed_phone: 
     )
 
 
-def _seed_candidate_resume(candidate_id: int, *, filename: str = "resume.pdf", content: bytes = b"%PDF-1.4 existing") -> None:
+def _seed_candidate_resume(
+    candidate_id: int,
+    *,
+    filename: str = "resume.pdf",
+    content: bytes = b"%PDF-1.4 existing",
+    mime: str = "application/pdf",
+) -> None:
     update_candidate_resume(
         candidate_id,
         resume_bytes=content,
         resume_filename=filename,
-        resume_mime="application/pdf",
+        resume_mime=mime,
         resume_size=len(content),
         resume_parsed={
             "details": {"status": "done", "data": {"summary": "已存在简历"}},
@@ -979,6 +985,22 @@ def test_public_invite_toggle_clears_link_when_disabled_and_exposes_qr(monkeypat
     assert disabled_quiz["public_invite_qr_url"] == ""
 
 
+def test_admin_quiz_list_can_filter_public_invites(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-filter-enabled-demo")
+    _seed_exam_with_metadata("public-filter-disabled-demo")
+    set_exam_public_invite("public-filter-enabled-demo", enabled=True, token="public-filter-token")
+    _admin_login(client)
+
+    response = client.get("/api/admin/quizzes?public_invite=enabled")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [item["quiz_key"] for item in payload["items"]] == ["public-filter-enabled-demo"]
+    assert payload["items"][0]["public_invite_enabled"] is True
+
+
 def test_public_invite_material_mode_can_switch_and_survives_disable(monkeypatch, tmp_path):
     client = _build_client(monkeypatch, tmp_path)
     _seed_exam_with_metadata("public-material-mode-demo")
@@ -1235,6 +1257,27 @@ def test_admin_candidate_detail_exposes_and_downloads_business_card(monkeypatch,
     assert download_response.content == b"card-bytes"
     assert download_response.headers["content-type"].startswith("image/jpeg")
     assert "candidate-card.jpg" in download_response.headers["content-disposition"]
+
+
+def test_admin_candidate_image_material_preview_uses_inline_disposition(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    candidate_id = create_candidate("图片预览候选人", "13912345680")
+    _seed_candidate_resume(candidate_id, filename="resume.png", content=b"png-resume", mime="image/png")
+    _seed_candidate_business_card(candidate_id, filename="candidate-card.jpg", content=b"jpg-card")
+
+    _admin_login(client)
+
+    resume_response = client.get(f"/api/admin/candidates/{candidate_id}/resume?preview=1")
+    assert resume_response.status_code == 200
+    assert resume_response.content == b"png-resume"
+    assert resume_response.headers["content-type"].startswith("image/png")
+    assert resume_response.headers["content-disposition"].startswith("inline;")
+
+    business_card_response = client.get(f"/api/admin/candidates/{candidate_id}/business-card?preview=1")
+    assert business_card_response.status_code == 200
+    assert business_card_response.content == b"jpg-card"
+    assert business_card_response.headers["content-type"].startswith("image/jpeg")
+    assert business_card_response.headers["content-disposition"].startswith("inline;")
 
 
 def test_admin_candidate_resume_upload_job_enqueues_and_completes(monkeypatch, tmp_path):
@@ -1960,6 +2003,45 @@ def test_admin_assignments_list_exposes_invite_urls_and_end_date_filters(monkeyp
     assert item["source_kind"] == "direct"
     assert item["source_label"] == "主动邀约"
     assert item["needs_attention"] is False
+
+
+def test_admin_assignments_list_can_filter_by_quiz_key(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    version_a = _seed_exam_with_metadata("assignment-filter-a")
+    version_b = _seed_exam_with_metadata("assignment-filter-b")
+    candidate_a = create_candidate("测验筛选甲", "13900000081")
+    candidate_b = create_candidate("测验筛选乙", "13900000082")
+    create_quiz_paper(
+        candidate_id=candidate_a,
+        phone="13900000081",
+        quiz_key="assignment-filter-a",
+        quiz_version_id=version_a,
+        token="filterQuizA001",
+        invite_start_date="2026-05-01",
+        invite_end_date="2026-05-02",
+        status="finished",
+    )
+    create_quiz_paper(
+        candidate_id=candidate_b,
+        phone="13900000082",
+        quiz_key="assignment-filter-b",
+        quiz_version_id=version_b,
+        token="filterQuizB001",
+        invite_start_date="2026-05-01",
+        invite_end_date="2026-05-02",
+        status="finished",
+    )
+    _admin_login(client)
+
+    response = client.get("/api/admin/assignments?quiz_key=assignment-filter-a")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["filters"]["quiz_key"] == "assignment-filter-a"
+    assert payload["total"] == 1
+    assert payload["summary"]["unhandled_finished_count"] == 1
+    assert [item["token"] for item in payload["items"]] == ["filterQuizA001"]
+    assert payload["items"][0]["quiz_key"] == "assignment-filter-a"
 
 
 def test_admin_assignments_list_supports_pagination_with_filters(monkeypatch, tmp_path):

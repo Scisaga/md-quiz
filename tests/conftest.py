@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -14,7 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 _DEFAULT_DATABASE_URL = "postgresql://admin:pasword@127.0.0.1:5433/md_quiz"
-_TEST_DATABASE_SUFFIX = "_pytest"
+_DEFAULT_TEST_SCHEMA = "md_quiz_pytest"
 _TRUNCATE_SQL = """
 TRUNCATE TABLE
   system_log,
@@ -54,19 +55,18 @@ def _load_base_database_url() -> str:
     return _normalize_database_url(str(env_values.get("DATABASE_URL") or ""))
 
 
-def _build_pytest_database_url(base_url: str) -> str:
-    parsed = urlsplit(base_url)
-    db_name = parsed.path.lstrip("/") or "md_quiz"
-    if not db_name.endswith(_TEST_DATABASE_SUFFIX):
-        db_name = f"{db_name}{_TEST_DATABASE_SUFFIX}"
-    return urlunsplit(parsed._replace(path=f"/{db_name}"))
-
-
 def _resolve_pytest_database_url() -> str:
     explicit = str(os.getenv("PYTEST_DATABASE_URL") or "").strip()
     if explicit:
         return _normalize_database_url(explicit)
-    return _build_pytest_database_url(_load_base_database_url())
+    return _load_base_database_url()
+
+
+def _resolve_pytest_schema() -> str:
+    raw = str(os.getenv("PYTEST_DATABASE_SCHEMA") or _DEFAULT_TEST_SCHEMA).strip()
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", raw):
+        raise RuntimeError(f"Invalid PYTEST_DATABASE_SCHEMA: {raw!r}")
+    return raw
 
 
 def _connect(database_url: str, *, dbname: str | None = None):
@@ -80,32 +80,39 @@ def _connect(database_url: str, *, dbname: str | None = None):
     )
 
 
-def _ensure_database_exists(database_url: str) -> None:
+def _ensure_database_accessible(database_url: str) -> None:
     parsed = urlsplit(database_url)
     target_db = parsed.path.lstrip("/")
-    last_error: Exception | None = None
-    for maintenance_db in ("postgres", "template1"):
-        conn = None
-        try:
-            conn = _connect(database_url, dbname=maintenance_db)
-            conn.autocommit = True
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1 FROM pg_database WHERE datname=%s", (target_db,))
-                if cur.fetchone():
-                    return
-                cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(target_db)))
-                return
-        except psycopg2.Error as exc:
-            last_error = exc
-        finally:
-            if conn is not None:
-                conn.close()
-    raise RuntimeError(f"无法创建 pytest 测试库 {target_db!r}: {last_error}")
+    conn = None
+    try:
+        conn = _connect(database_url)
+    except psycopg2.Error as exc:
+        raise RuntimeError(f"无法连接 pytest 数据库 {target_db!r}: {exc}") from exc
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _ensure_test_schema_exists(database_url: str, schema_name: str) -> None:
+    conn = None
+    try:
+        conn = _connect(database_url)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(schema_name)))
+    except psycopg2.Error as exc:
+        raise RuntimeError(f"无法创建 pytest 测试 schema {schema_name!r}: {exc}") from exc
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 _PYTEST_DATABASE_URL = _resolve_pytest_database_url()
-_ensure_database_exists(_PYTEST_DATABASE_URL)
+_PYTEST_DATABASE_SCHEMA = _resolve_pytest_schema()
+_ensure_database_accessible(_PYTEST_DATABASE_URL)
+_ensure_test_schema_exists(_PYTEST_DATABASE_URL, _PYTEST_DATABASE_SCHEMA)
 os.environ["DATABASE_URL"] = _PYTEST_DATABASE_URL
+os.environ["PGOPTIONS"] = f"-c search_path={_PYTEST_DATABASE_SCHEMA},public"
 os.environ.setdefault("APP_ENV", "test")
 
 

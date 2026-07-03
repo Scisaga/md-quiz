@@ -1,9 +1,12 @@
 import { copyTextToClipboard, queueMathTypeset } from "/static/assets/js/shared/runtime.js";
 import { ADMIN_COMPACT_BREAKPOINT_QUERY, ADMIN_COMPACT_TAB_CONFIG } from "./constants.js";
 
+const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = "md-quiz-admin-sidebar-collapsed";
+
 export function createAdminShellModule() {
   return {
     async boot() {
+      this.initAdminSidebarState();
       this.initAdminCompactLayout();
       window.addEventListener("popstate", () => this.handleRoute(location.pathname, { replace: true }));
       await this.refreshSession();
@@ -37,6 +40,36 @@ export function createAdminShellModule() {
         }
       }
       this.handleAdminCompactLayoutChange(Boolean(this.adminCompactMediaQuery.matches));
+    },
+
+    initAdminSidebarState() {
+      if (typeof window === "undefined" || !window.localStorage) {
+        return;
+      }
+      this.isAdminSidebarCollapsed = window.localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+    },
+
+    persistAdminSidebarState() {
+      if (typeof window === "undefined" || !window.localStorage) {
+        return;
+      }
+      window.localStorage.setItem(
+        ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY,
+        this.isAdminSidebarCollapsed ? "true" : "false",
+      );
+    },
+
+    toggleAdminSidebar() {
+      this.isAdminSidebarCollapsed = !this.isAdminSidebarCollapsed;
+      this.persistAdminSidebarState();
+    },
+
+    adminSidebarLabelClass() {
+      return this.isAdminSidebarCollapsed ? "sr-only" : "";
+    },
+
+    adminSidebarLogoClass() {
+      return this.isAdminSidebarCollapsed ? "justify-center px-2" : "px-3";
     },
 
     async handleAdminCompactLayoutChange(matches) {
@@ -219,7 +252,7 @@ export function createAdminShellModule() {
         this.loginForm = { username: "", password: "" };
         await this.$nextTick();
         await this.loadBootstrap();
-        await this.handleRoute("/admin/quizzes");
+        await this.handleRoute("/admin/dashboard");
       } catch (error) {
         this.error = error.message || "登录失败";
       }

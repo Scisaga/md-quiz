@@ -1,4 +1,4 @@
-import { LOG_SERIES_META, LOG_TREND_WINDOW_DAYS, formatLogTrendCount } from "../constants.js";
+import { LOG_SERIES_META, LOG_TREND_WINDOW_DAYS, formatLogTrendCount } from"../constants.js";
 export function createAdminLogsModule() {
   return {
     logCategoryCards() {
@@ -31,7 +31,7 @@ export function createAdminLogsModule() {
         window.removeEventListener("resize", this.logsChartWindowResize);
         this.logsChartWindowResize = null;
       }
-      if (this.logsChart && typeof this.logsChart.remove === "function") {
+      if (this.logsChart && typeof this.logsChart.remove ==="function") {
         this.logsChart.remove();
       }
       this.logsChart = null;
@@ -45,21 +45,21 @@ export function createAdminLogsModule() {
       if (!chart || !container) return;
       const width = Math.max(Math.round(container.clientWidth || 0), 280);
       const height = Math.max(Math.round(container.clientHeight || 0), 320);
-      if (typeof chart.resize === "function") {
+      if (typeof chart.resize ==="function") {
         chart.resize(width, height);
         return;
       }
-      if (typeof chart.applyOptions === "function") {
+      if (typeof chart.applyOptions ==="function") {
         chart.applyOptions({ width, height });
       }
     },
 
     createLogsChartSeries(chart, options) {
       const chartLib = window.LightweightCharts;
-      if (typeof chart?.addSeries === "function" && chartLib?.LineSeries) {
+      if (typeof chart?.addSeries ==="function" && chartLib?.LineSeries) {
         return chart.addSeries(chartLib.LineSeries, options);
       }
-      if (typeof chart?.addLineSeries === "function") {
+      if (typeof chart?.addLineSeries ==="function") {
         return chart.addLineSeries(options);
       }
       return null;
@@ -82,44 +82,44 @@ export function createAdminLogsModule() {
         height: Math.max(Math.round(container.clientHeight || 0), 320),
         layout: {
           background: {
-            color: "#020617",
-            type: chartLib.ColorType ? chartLib.ColorType.Solid : "solid",
+            color:"#020617",
+            type: chartLib.ColorType ? chartLib.ColorType.Solid :"solid",
           },
-          textColor: "#cbd5e1",
-          fontFamily: "\"SF Pro Display\", \"Segoe UI Variable\", \"PingFang SC\", system-ui, sans-serif",
+          textColor:"#cbd5e1",
+          fontFamily:"\"SF Pro Display\", \"Segoe UI Variable\", \"PingFang SC\", system-ui, sans-serif",
         },
         grid: {
-          vertLines: { color: "rgba(148, 163, 184, 0.08)" },
-          horzLines: { color: "rgba(148, 163, 184, 0.08)" },
+          vertLines: { color:"rgba(148, 163, 184, 0.08)" },
+          horzLines: { color:"rgba(148, 163, 184, 0.08)" },
         },
         rightPriceScale: {
-          borderColor: "rgba(148, 163, 184, 0.18)",
+          borderColor:"rgba(148, 163, 184, 0.18)",
         },
         timeScale: {
-          borderColor: "rgba(148, 163, 184, 0.18)",
+          borderColor:"rgba(148, 163, 184, 0.18)",
           tickMarkFormatter: (time) => {
-            if (typeof time !== "string") return "";
+            if (typeof time !=="string") return"";
             const parts = time.split("-");
             return parts.length === 3 ? `${parts[1]}/${parts[2]}` : time;
           },
         },
         crosshair: {
           vertLine: {
-            color: "rgba(59, 130, 246, 0.28)",
-            labelBackgroundColor: "#1d4ed8",
+            color:"rgba(59, 130, 246, 0.28)",
+            labelBackgroundColor:"#1d4ed8",
           },
           horzLine: {
-            color: "rgba(148, 163, 184, 0.24)",
-            labelBackgroundColor: "#0f172a",
+            color:"rgba(148, 163, 184, 0.24)",
+            labelBackgroundColor:"#0f172a",
           },
         },
         localization: {
-          locale: "zh-CN",
+          locale:"zh-CN",
           priceFormatter: formatLogTrendCount,
           tickmarksPriceFormatter: (prices) => prices.map((price) => formatLogTrendCount(price)),
         },
       });
-      if (typeof ResizeObserver === "function") {
+      if (typeof ResizeObserver ==="function") {
         this.logsChartResizeObserver = new ResizeObserver(() => this.resizeLogsChart());
         this.logsChartResizeObserver.observe(container);
       } else {
@@ -147,7 +147,7 @@ export function createAdminLogsModule() {
             color: item.color,
             lineWidth: 2,
             priceFormat: {
-              type: "price",
+              type:"price",
               precision: 0,
               minMove: 1,
             },
@@ -155,7 +155,7 @@ export function createAdminLogsModule() {
             lastValueVisible: false,
             crosshairMarkerRadius: 4,
             crosshairMarkerBorderColor: item.color,
-            crosshairMarkerBackgroundColor: "#020617",
+            crosshairMarkerBackgroundColor:"#020617",
             title: item.label,
           });
           if (!series) continue;
@@ -163,7 +163,7 @@ export function createAdminLogsModule() {
         }
         series.setData(points);
       }
-      if (typeof chart.timeScale === "function") {
+      if (typeof chart.timeScale ==="function") {
         chart.timeScale().fitContent();
       }
     },

@@ -15,6 +15,7 @@ router = APIRouter()
 def get_assignments(
     request: Request,
     q: str = "",
+    quiz_key: str = "",
     start_from: str = "",
     start_to: str = "",
     end_from: str = "",
@@ -27,8 +28,10 @@ def get_assignments(
     invite_start_to = str(start_to or "").strip() or None
     invite_end_from = str(end_from or "").strip() or None
     invite_end_to = str(end_to or "").strip() or None
+    quiz_key_filter = str(quiz_key or "").strip() or None
     total = shared.deps.count_quiz_papers(
         query=q or None,
+        quiz_key=quiz_key_filter,
         invite_start_from=invite_start_from,
         invite_start_to=invite_start_to,
         invite_end_from=invite_end_from,
@@ -36,6 +39,7 @@ def get_assignments(
     )
     unhandled_finished_count = shared.deps.count_unhandled_finished_quiz_papers(
         query=q or None,
+        quiz_key=quiz_key_filter,
         invite_start_from=invite_start_from,
         invite_start_to=invite_start_to,
         invite_end_from=invite_end_from,
@@ -46,6 +50,7 @@ def get_assignments(
     offset = (current_page - 1) * per_page
     rows = shared.deps.list_quiz_papers(
         query=q or None,
+        quiz_key=quiz_key_filter,
         invite_start_from=invite_start_from,
         invite_start_to=invite_start_to,
         invite_end_from=invite_end_from,
@@ -64,6 +69,7 @@ def get_assignments(
         "total_pages": total_pages,
         "filters": {
             "q": str(q or "").strip(),
+            "quiz_key": quiz_key_filter or "",
             "start_from": start_from,
             "start_to": start_to,
             "end_from": end_from,

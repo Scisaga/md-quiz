@@ -1,22 +1,28 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @source "../../admin/**/*.html";
 @source "../../admin/**/*.js";
 
 :root {
-  --admin-bg: #f4f8ff;
-  --admin-ink: #10233f;
-  --admin-panel: rgba(255, 255, 255, 0.9);
-  --admin-panel-strong: rgba(255, 255, 255, 0.97);
-  --admin-border: rgba(37, 99, 235, 0.16);
+  --admin-bg-left: #dfeaff;
+  --admin-bg-mid: #f8fbff;
+  --admin-bg-right: #e7f7ee;
+  --admin-ink: #0f172a;
+  --admin-text: #334155;
+  --admin-muted: #64748b;
+  --admin-soft: #f8fbff;
+  --admin-panel: rgba(255, 255, 255, 0.92);
+  --admin-panel-strong: rgba(255, 255, 255, 0.98);
+  --admin-line: rgba(37, 99, 235, 0.12);
+  --admin-line-strong: rgba(37, 99, 235, 0.18);
   --admin-brand: #2563eb;
   --admin-brand-strong: #1d4ed8;
   --admin-accent: #16a34a;
-  --admin-muted: #64748b;
   --admin-danger: #e11d48;
   --admin-warning: #d97706;
-  --admin-shadow: 0 30px 80px rgba(15, 23, 42, 0.08);
-  --radius-2xl: 0.875rem;
-  --radius-3xl: 1rem;
+  --admin-shadow: 0 18px 46px rgba(15, 23, 42, 0.06);
+  --admin-shadow-soft: 0 10px 26px rgba(15, 23, 42, 0.045);
+  --admin-radius: 14px;
+  --admin-radius-sm: 10px;
 }
 
 @layer base {
@@ -29,16 +35,16 @@
   html {
     min-height: 100%;
     background:
-      radial-gradient(1200px 640px at 0% 0%, rgba(37, 99, 235, 0.16), transparent 58%),
-      radial-gradient(1100px 680px at 100% 0%, rgba(22, 163, 74, 0.14), transparent 56%),
-      linear-gradient(180deg, #f7fbff 0%, #eef5ff 54%, #f5fbf7 100%);
-    background-attachment: fixed, fixed, fixed;
+      linear-gradient(90deg, rgba(223, 234, 255, 0.9) 0%, rgba(248, 251, 255, 0.96) 48%, rgba(231, 247, 238, 0.9) 100%),
+      linear-gradient(180deg, #f7fbff 0%, #eef5ff 56%, #f4fbf7 100%);
+    background-attachment: fixed, fixed;
   }
 
   body {
     min-height: 100vh;
     margin: 0;
     color: var(--admin-ink);
+    letter-spacing: 0;
     font-family:
       "SF Pro Display",
       "Segoe UI Variable",
@@ -62,6 +68,12 @@
 
   a {
     color: inherit;
+  }
+
+  b,
+  strong,
+  :where(select:is([multiple], [size])) optgroup {
+    font-weight: 560;
   }
 
   [x-cloak] {

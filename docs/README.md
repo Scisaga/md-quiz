@@ -38,6 +38,7 @@
 
 - [UI 主题覆盖](ui/theme.md)
 - [Utility 落地规则](ui/utility-authoring.md)
+- [后台管理界面视觉参考](ui/admin-style-references/README.md)
 
 ## 建议阅读顺序
 

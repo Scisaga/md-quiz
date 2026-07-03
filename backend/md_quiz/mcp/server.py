@@ -292,6 +292,7 @@ def create_mcp_server(*, container: Any, settings: Any) -> tuple[Any, FastAPI]:
     @server.tool()
     def assignment_list(
         query: str = "",
+        quiz_key: str = "",
         start_from: str = "",
         start_to: str = "",
         end_from: str = "",
@@ -305,6 +306,7 @@ def create_mcp_server(*, container: Any, settings: Any) -> tuple[Any, FastAPI]:
             "assignment_list",
             lambda: service.assignment_list(
                 query=query,
+                quiz_key=quiz_key,
                 start_from=start_from,
                 start_to=start_to,
                 end_from=end_from,

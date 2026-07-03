@@ -56,6 +56,11 @@
 
 返回测验列表、分页信息、实例级仓库绑定信息与当前同步状态。
 
+支持筛选参数：
+
+- `q`：匹配测验标题、ID 或 tags
+- `public_invite=enabled`：只返回已开启公开邀约的测验
+
 ### `GET /api/admin/quizzes/{quiz_key}`
 
 返回测验详情、版本历史、公开邀约状态与测验快照。
@@ -162,6 +167,7 @@
 支持筛选参数：
 
 - `q`
+- `quiz_key`：精确筛选某个测验的邀约与答题实例
 - `start_from`
 - `start_to`
 - `end_from`

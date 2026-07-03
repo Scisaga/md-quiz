@@ -13,178 +13,156 @@
     <script type="module" src="/static/admin/app.js"></script>
     <script defer src="/static/assets/js/alpine.min.js"></script>
   </head>
-  <body x-data="adminApp()" x-init="boot()" class="min-h-screen bg-transparent text-slate-900">
-    <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div class="absolute -left-28 top-0 h-72 w-72 rounded-full bg-blue-500/18 blur-3xl"></div>
-      <div class="absolute right-0 top-12 h-80 w-80 rounded-full bg-emerald-500/16 blur-3xl"></div>
-      <div class="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-sky-300/18 blur-3xl"></div>
-    </div>
+  <body x-data="adminApp()" x-init="boot()" class="admin-r-document">
+    <div class="admin-r-bg" aria-hidden="true"></div>
 
-    <div
-      x-cloak
-      x-show="booting"
-      class="fixed inset-0 z-50 grid place-items-center bg-white/55 backdrop-blur-sm"
-    >
-      <div class="rounded-3xl border border-white/70 bg-white/85 px-6 py-4 shadow-[var(--admin-shadow)]">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-rounded animate-spin text-blue-600">progress_activity</span>
-          <span class="text-sm font-medium text-slate-700">后台正在加载</span>
-        </div>
+    <div x-cloak x-show="booting" class="admin-r-loading">
+      <div class="admin-r-loading__panel">
+        <span class="material-symbols-rounded admin-r-loading__icon">progress_activity</span>
+        <span>后台正在加载</span>
       </div>
     </div>
 
-    <main class="min-h-screen p-3 sm:p-5 xl:p-6" x-cloak>
+    <main class="admin-r-root" x-cloak>
       <section x-show="!session.authenticated" x-cloak>
         <div x-ref="loginMount"></div>
       </section>
 
-      <section x-show="session.authenticated" x-cloak class="admin-shell mx-auto flex max-w-[1700px] gap-4">
-          <aside class="admin-shell__aside hidden w-64 shrink-0 md:block">
-            <div class="admin-surface admin-sidebar-surface sticky top-6 rounded-3xl border border-white/70 bg-white/78 p-4 shadow-[var(--admin-shadow)] backdrop-blur-xl">
-              <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-600 to-emerald-500 px-4 py-4 text-white">
-                <img
-                  src="/static/logo.png"
-                  alt="MD Quiz"
-                  class="h-11 w-11 shrink-0 rounded-2xl bg-white/14 object-contain p-1.5 shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
-                />
-                <div>
-                  <div class="text-xs uppercase tracking-[0.18em] text-white/75">MD Quiz</div>
-                  <div class="text-lg font-semibold">Admin Shell</div>
-                </div>
-              </div>
-              <nav class="mt-4 space-y-2">
-                <template x-for="item in navItems" :key="item.href">
-                  <button
-                    type="button"
-                    @click="go(item.href)"
-                    :class="isPrimaryNavItemActive(item.href) ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white/85 text-slate-600 hover:bg-blue-50 hover:text-blue-700'"
-                    class="admin-sidebar-nav__item flex w-full items-center justify-between rounded-2xl border border-blue-100/80 px-4 py-3 text-left text-sm font-medium transition"
-                  >
-                    <span class="flex items-center gap-3">
-                      <template x-if="item.iconKind === 'mcp'">
-                        <svg viewBox="0 0 195 195" aria-hidden="true" class="shrink-0" style="width: 24px; height: 24px;" fill="none">
-                          <path d="M25 97.8528L92.8823 29.9706C102.255 20.598 117.451 20.598 126.823 29.9706C136.196 39.3431 136.196 54.5391 126.823 63.9117L75.5581 115.177" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-                          <path d="M76.2653 114.47L126.823 63.9117C136.196 54.5391 151.392 54.5391 160.765 63.9117L161.118 64.2652C170.491 73.6378 170.491 88.8338 161.118 98.2063L99.7248 159.6C96.6006 162.724 96.6006 167.789 99.7248 170.913L112.331 183.52" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-                          <path d="M109.853 46.9411L59.6482 97.1457C50.2757 106.518 50.2757 121.714 59.6482 131.087C69.0208 140.459 84.2168 140.459 93.5894 131.087L143.794 80.8822" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-                        </svg>
-                      </template>
-                      <template x-if="item.iconKind !== 'mcp'">
-                        <span class="material-symbols-rounded text-[20px]" x-text="item.icon"></span>
-                      </template>
-                      <span x-text="item.label"></span>
-                    </span>
-                    <span class="text-xs opacity-70" x-text="isPrimaryNavItemActive(item.href) ? '当前' : ''"></span>
-                  </button>
-                </template>
-              </nav>
+      <section
+        x-show="session.authenticated"
+        x-cloak
+        class="admin-r-shell"
+        :class="isAdminSidebarCollapsed ? 'admin-r-shell--collapsed' : ''"
+      >
+        <aside class="admin-r-sidebar" aria-label="后台导航">
+          <div class="admin-r-brand">
+            <img src="/static/logo.png" alt="MD Quiz" class="admin-r-brand__mark" />
+            <div class="admin-r-brand__text">
+              <div class="admin-r-brand__eyebrow">MD Quiz</div>
+              <div class="admin-r-brand__title">后台管理</div>
+            </div>
+            <button
+              type="button"
+              @click="toggleAdminSidebar"
+              class="admin-r-collapse"
+              :aria-label="isAdminSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+              :title="isAdminSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+            >
+              <span class="material-symbols-rounded" x-text="isAdminSidebarCollapsed ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'"></span>
+            </button>
+          </div>
+
+          <nav class="admin-r-nav">
+            <template x-for="item in navItems" :key="item.href">
               <button
                 type="button"
-                @click="logout"
-                class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                @click="go(item.href)"
+                :title="item.label"
+                :aria-label="item.label"
+                :class="isPrimaryNavItemActive(item.href) ? 'is-active' : ''"
+                class="admin-r-nav__item"
               >
-                <span class="material-symbols-rounded text-base">logout</span>
-                退出登录
+                <span class="admin-r-nav__icon" aria-hidden="true">
+                  <template x-if="item.iconKind === 'mcp'">
+                    <svg viewBox="0 0 195 195" fill="none">
+                      <path d="M25 97.8528L92.8823 29.9706C102.255 20.598 117.451 20.598 126.823 29.9706C136.196 39.3431 136.196 54.5391 126.823 63.9117L75.5581 115.177" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+                      <path d="M76.2653 114.47L126.823 63.9117C136.196 54.5391 151.392 54.5391 160.765 63.9117L161.118 64.2652C170.491 73.6378 170.491 88.8338 161.118 98.2063L99.7248 159.6C96.6006 162.724 96.6006 167.789 99.7248 170.913L112.331 183.52" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+                      <path d="M109.853 46.9411L59.6482 97.1457C50.2757 106.518 50.2757 121.714 59.6482 131.087C69.0208 140.459 84.2168 140.459 93.5894 131.087L143.794 80.8822" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+                    </svg>
+                  </template>
+                  <template x-if="item.iconKind !== 'mcp'">
+                    <span class="material-symbols-rounded" x-text="item.icon"></span>
+                  </template>
+                </span>
+                <span class="admin-r-sidebar-label" x-text="item.label"></span>
+              </button>
+            </template>
+          </nav>
+
+          <div class="admin-r-sidebar-tools">
+            <button
+              type="button"
+              @click="logout"
+              class="admin-r-sidebar-tool"
+              aria-label="退出登录"
+              title="退出登录"
+            >
+              <span class="material-symbols-rounded">logout</span>
+              <span class="admin-r-sidebar-label">退出登录</span>
+            </button>
+          </div>
+        </aside>
+
+        <section class="admin-r-stage">
+          <header class="admin-r-topbar">
+            <div class="admin-r-titlebar">
+              <div class="admin-r-titlebar__section" x-text="route.section"></div>
+              <h1 class="admin-r-titlebar__title" x-text="route.title"></h1>
+            </div>
+            <div class="admin-r-topbar__meta">
+              <div class="admin-r-health-pill">
+                <span class="admin-r-health-pill__dot"></span>
+                <span x-text="dashboardSystemLevelLabel ? dashboardSystemLevelLabel() : (statusSummary.overall_level || 'ok')"></span>
+              </div>
+              <div class="admin-r-user-pill">
+                <span>用户</span>
+                <span class="admin-r-user-name" x-text="session.username || 'admin'"></span>
+              </div>
+              <button
+                x-show="isAdminCompactLayout"
+                type="button"
+                @click="logout"
+                class="admin-r-mobile-logout"
+                aria-label="退出登录"
+              >
+                <span class="material-symbols-rounded">logout</span>
               </button>
             </div>
-          </aside>
+          </header>
 
-          <div class="admin-shell__main min-w-0 flex-1">
-            <header class="admin-surface admin-header-surface mb-4 rounded-3xl border border-white/70 bg-white/76 px-4 py-4 shadow-[var(--admin-shadow)] backdrop-blur-xl sm:px-5">
-              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div class="min-w-0">
-                  <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" x-text="route.section"></div>
-                  <h1 class="mt-1 truncate text-3xl font-semibold tracking-[-0.04em] text-slate-900" x-text="route.title"></h1>
-                </div>
-                <div class="admin-header-meta flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                  <div class="admin-header-meta__pill rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5">
-                    <span class="admin-header-meta__label">当前用户：</span>
-                    <span class="font-semibold text-slate-900" x-text="session.username || 'admin'"></span>
-                  </div>
-                  <div class="admin-header-meta__pill rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5">
-                    <span class="admin-header-meta__label">系统状态：</span>
-                    <span class="font-semibold text-emerald-700" x-text="statusSummary.overall_level || 'ok'"></span>
-                  </div>
-                  <button
-                    x-show="isAdminCompactLayout"
-                    type="button"
-                    @click="logout"
-                    class="admin-header-meta__logout inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/88 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:hidden"
-                    aria-label="退出登录"
-                  >
-                    <span class="material-symbols-rounded text-base">logout</span>
-                    <span class="admin-header-meta__logout-text">退出</span>
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            <div x-show="isAdminCompactLayout" x-cloak class="admin-mobile-nav-shell md:hidden">
-              <div class="admin-primary-nav">
-                <div
-                  class="admin-primary-nav__track"
-                  role="navigation"
-                  aria-label="后台主导航"
-                  :style="{ '--admin-primary-nav-columns': navItems.length }"
+          <div x-show="isAdminCompactLayout" x-cloak class="admin-r-mobile-nav">
+            <div
+              class="admin-r-mobile-nav__track"
+              role="navigation"
+              aria-label="后台主导航"
+              :style="{ '--admin-mobile-nav-count': navItems.length }"
+            >
+              <template x-for="item in navItems" :key="'compact-' + item.href">
+                <button
+                  type="button"
+                  @click="go(item.href)"
+                  :aria-label="item.label"
+                  :title="item.label"
+                  :class="isPrimaryNavItemActive(item.href) ? 'is-active' : ''"
+                  class="admin-r-mobile-nav__item"
                 >
-                  <template x-for="item in navItems" :key="'compact-' + item.href">
-                    <button
-                      type="button"
-                      @click="go(item.href)"
-                      :aria-label="item.label"
-                      :title="item.label"
-                      :class="isPrimaryNavItemActive(item.href) ? 'admin-primary-nav__item--active' : 'admin-primary-nav__item--inactive'"
-                      class="admin-primary-nav__item"
-                    >
-                      <template x-if="item.iconKind === 'mcp'">
-                        <svg viewBox="0 0 195 195" aria-hidden="true" class="shrink-0" style="width: 24px; height: 24px;" fill="none">
-                          <path d="M25 97.8528L92.8823 29.9706C102.255 20.598 117.451 20.598 126.823 29.9706C136.196 39.3431 136.196 54.5391 126.823 63.9117L75.5581 115.177" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-                          <path d="M76.2653 114.47L126.823 63.9117C136.196 54.5391 151.392 54.5391 160.765 63.9117L161.118 64.2652C170.491 73.6378 170.491 88.8338 161.118 98.2063L99.7248 159.6C96.6006 162.724 96.6006 167.789 99.7248 170.913L112.331 183.52" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-                          <path d="M109.853 46.9411L59.6482 97.1457C50.2757 106.518 50.2757 121.714 59.6482 131.087C69.0208 140.459 84.2168 140.459 93.5894 131.087L143.794 80.8822" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
-                        </svg>
-                      </template>
-                      <template x-if="item.iconKind !== 'mcp'">
-                        <span class="material-symbols-rounded text-[20px]" x-text="item.icon"></span>
-                      </template>
-                    </button>
+                  <template x-if="item.iconKind === 'mcp'">
+                    <svg viewBox="0 0 195 195" aria-hidden="true" fill="none">
+                      <path d="M25 97.8528L92.8823 29.9706C102.255 20.598 117.451 20.598 126.823 29.9706C136.196 39.3431 136.196 54.5391 126.823 63.9117L75.5581 115.177" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+                      <path d="M76.2653 114.47L126.823 63.9117C136.196 54.5391 151.392 54.5391 160.765 63.9117L161.118 64.2652C170.491 73.6378 170.491 88.8338 161.118 98.2063L99.7248 159.6C96.6006 162.724 96.6006 167.789 99.7248 170.913L112.331 183.52" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+                      <path d="M109.853 46.9411L59.6482 97.1457C50.2757 106.518 50.2757 121.714 59.6482 131.087C69.0208 140.459 84.2168 140.459 93.5894 131.087L143.794 80.8822" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+                    </svg>
                   </template>
-                </div>
-              </div>
-              <div
-                x-show="shouldShowAdminCompactTabs(route.name)"
-                x-cloak
-                :data-admin-compact-tabs="route.name"
-                class="admin-compact-tabs"
-              >
-                <div
-                  class="admin-compact-tabs__track"
-                  role="tablist"
-                  :aria-label="`${route.title || '当前页面'}内容切换`"
-                >
-                  <template x-for="tab in adminCompactTabs(route.name)" :key="`${route.name || 'route'}-${tab.id}`">
-                    <button
-                      type="button"
-                      role="tab"
-                      @click="setAdminCompactTab(route.name, tab.id)"
-                      :class="adminCompactTab(route.name) === tab.id ? 'admin-compact-tab--active' : 'admin-compact-tab--inactive'"
-                      :aria-selected="String(adminCompactTab(route.name) === tab.id)"
-                      class="admin-compact-tab"
-                      x-text="tab.label"
-                    ></button>
+                  <template x-if="item.iconKind !== 'mcp'">
+                    <span class="material-symbols-rounded" x-text="item.icon"></span>
                   </template>
-                </div>
-              </div>
-            </div>
-
-            <div x-ref="pageMount"></div>
-
-            <div x-show="(notices || []).length" class="pointer-events-none fixed bottom-6 left-6 right-6 z-40 overflow-hidden">
-              <div class="flex justify-end gap-3 overflow-hidden">
-                <template x-for="item in notices" :key="item.id">
-                  <div class="pointer-events-auto max-w-md shrink-0 rounded-xl border border-slate-200 bg-white/95 px-5 py-4 text-sm text-slate-700 shadow-[var(--admin-shadow)] backdrop-blur-xl" x-text="item.message"></div>
-                </template>
-              </div>
+                  <span
+                    class="admin-r-mobile-nav__label"
+                    x-text="({ '邀约与答题': '邀约', '系统日志': '日志', '系统状态': '状态' }[item.label] || item.label)"
+                  ></span>
+                </button>
+              </template>
             </div>
           </div>
+
+          <div class="admin-r-page-mount" x-ref="pageMount"></div>
+
+          <div x-show="(notices || []).length" class="admin-r-notices">
+            <template x-for="item in notices" :key="item.id">
+              <div class="admin-r-notice" x-text="item.message"></div>
+            </template>
+          </div>
+        </section>
       </section>
     </main>
   </body>

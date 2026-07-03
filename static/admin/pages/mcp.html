@@ -1,183 +1,133 @@
-<div x-show="route.name === 'mcp'" class="admin-mobile-pane-grid grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-            <div
-              x-show="shouldShowAdminCompactTabs('mcp')"
-              x-cloak
-              data-admin-compact-tabs="mcp"
-              class="hidden admin-compact-tabs md:block xl:hidden"
-            >
-              <div class="admin-compact-tabs__track" role="tablist" aria-label="MCP 内容切换">
-                <template x-for="tab in adminCompactTabs('mcp')" :key="tab.id">
-                  <button
-                    type="button"
-                    role="tab"
-                    @click="setAdminCompactTab('mcp', tab.id)"
-                    :class="adminCompactTab('mcp') === tab.id ? 'admin-compact-tab--active' : 'admin-compact-tab--inactive'"
-                    :aria-selected="String(adminCompactTab('mcp') === tab.id)"
-                    class="admin-compact-tab"
-                    x-text="tab.label"
-                  ></button>
-                </template>
+<div x-show="route.name === 'mcp'" class="admin-r-workspace admin-r-workspace--wide">
+  <div x-show="shouldShowAdminCompactTabs('mcp')" x-cloak data-admin-compact-tabs="mcp" class="admin-compact-tabs">
+    <div class="admin-compact-tabs__track" role="tablist" aria-label="MCP 内容切换">
+      <template x-for="tab in adminCompactTabs('mcp')" :key="tab.id">
+        <button
+          type="button"
+          role="tab"
+          @click="setAdminCompactTab('mcp', tab.id)"
+          :class="adminCompactTab('mcp') === tab.id ? 'admin-compact-tab--active' : 'admin-compact-tab--inactive'"
+          :aria-selected="String(adminCompactTab('mcp') === tab.id)"
+          class="admin-compact-tab"
+          x-text="tab.label"
+        ></button>
+      </template>
+    </div>
+  </div>
+
+  <section x-show="adminCompactPanelVisible('mcp', 'overview')" class="admin-r-surface">
+    <header class="admin-r-header">
+      <div>
+        <h2 class="admin-r-title">MCP 接入摘要</h2>
+        <p class="admin-r-subtitle">智能体访问测验、候选人、邀约和系统状态的远程入口。</p>
+      </div>
+      <span class="admin-r-pill" :class="mcpInfo().enabled ? 'admin-r-pill--ok' : ''" x-text="mcpInfo().enabled ? 'Enabled' : 'Disabled'"></span>
+    </header>
+
+    <div class="grid grid-cols-[12rem_minmax(0,1fr)] divide-x divide-blue-100/70 border-b border-blue-100/70">
+      <div class="admin-r-section">
+        <div class="admin-r-label">传输方式</div>
+        <div class="mt-2 text-lg text-slate-900" x-text="mcpInfo().transport || 'streamable-http'"></div>
+      </div>
+      <div class="admin-r-section">
+        <div class="admin-r-label">鉴权</div>
+        <div class="mt-2 text-lg text-slate-900" x-text="mcpInfo().auth_scheme || 'bearer'"></div>
+        <p class="admin-r-subtitle">远程 HTTP MCP，不复用后台登录态。</p>
+      </div>
+    </div>
+
+    <div class="admin-r-section">
+      <div class="admin-r-label">Bearer Token</div>
+      <div class="mt-3 flex overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div class="min-w-0 flex-1 bg-[rgba(24,43,78,0.96)] px-3 py-2.5 admin-r-code leading-6 text-slate-100/92" x-text="mcpAuthTokenDisplay()"></div>
+        <button type="button" @click="toggleMcpTokenVisibility" :disabled="!mcpHasAuthToken()" :aria-label="mcpTokenVisibilityLabel()" :title="mcpTokenVisibilityLabel()" class="grid w-11 place-items-center border-l border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+          <span class="material-symbols-rounded text-[20px]" x-text="mcpTokenVisibilityIcon()"></span>
+        </button>
+        <button type="button" @click="copyMcpToken" :disabled="!mcpHasAuthToken()" aria-label="复制 Token" title="复制 Token" class="grid w-11 place-items-center border-l border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+          <span class="material-symbols-rounded text-[20px]">content_copy</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-r-section">
+      <div class="admin-r-label">MCP 地址</div>
+      <div class="mt-2 break-all text-sm leading-6 text-slate-800" x-text="mcpUrl() || '未启用'"></div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button type="button" @click="copyMcpUrl" class="admin-r-button admin-r-button--primary">
+          <span class="material-symbols-rounded text-base">content_copy</span>
+          复制 MCP 地址
+        </button>
+        <button type="button" @click="openMcpDocs" class="admin-r-button">
+          <span class="material-symbols-rounded text-base">open_in_new</span>
+          打开 MCP 文档
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-r-section">
+      <div class="admin-r-label">客户端配置</div>
+      <div class="mt-3 grid gap-3">
+        <template x-for="client in mcpClientConfigs()" :key="client.key">
+          <section class="rounded-lg border border-blue-100 bg-slate-50/65">
+            <div class="flex items-start justify-between gap-3 border-b border-blue-100/70 px-4 py-3">
+              <div class="flex min-w-0 items-start gap-3">
+                <span aria-hidden="true" class="mt-0.5 block h-8 w-8 shrink-0 bg-contain bg-center bg-no-repeat" :style="{ backgroundImage: `url('${client.icon}')` }"></span>
+                <div class="min-w-0">
+                  <h3 class="text-sm text-slate-900" x-text="client.label"></h3>
+                  <p class="mt-1 text-sm leading-6 text-slate-600" x-text="client.location"></p>
+                </div>
               </div>
+              <span class="admin-r-pill" x-text="client.format"></span>
             </div>
+            <pre class="m-0 max-h-80 overflow-auto bg-[rgba(24,43,78,0.96)] px-4 py-3 text-xs leading-6 text-slate-100/92"><code x-text="client.snippet"></code></pre>
+          </section>
+        </template>
+      </div>
+    </div>
+  </section>
 
-            <section
-              x-show="adminCompactPanelVisible('mcp', 'overview')"
-              class="admin-surface rounded-3xl border border-white/70 bg-white/82 p-5 shadow-[var(--admin-shadow)] backdrop-blur-xl"
-            >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 class="text-xl font-semibold tracking-[-0.03em] text-slate-900">MCP 接入摘要</h2>
-                  <p class="mt-1 text-sm text-slate-600">为智能体开放测验同步、候选人建档、邀约与结果查询等完整链路。</p>
-                </div>
-                <div
-                  class="rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]"
-                  :class="mcpInfo().enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-600'"
-                  x-text="mcpInfo().enabled ? 'Enabled' : 'Disabled'"
-                ></div>
-              </div>
+  <aside x-show="adminCompactPanelVisible('mcp', 'capabilities')" class="admin-r-surface">
+    <header class="admin-r-header">
+      <div>
+        <h2 class="admin-r-title">能力范围与安全规则</h2>
+        <p class="admin-r-subtitle">工具分组、脱敏和高危操作约束。</p>
+      </div>
+    </header>
 
-              <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/78">
-                <div class="grid gap-0 divide-y divide-slate-200 sm:grid-cols-[180px_minmax(0,1fr)] sm:divide-y-0 sm:divide-x">
-                  <div class="bg-white/72 px-4 py-4">
-                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">传输方式</div>
-                    <div class="mt-2 text-lg font-semibold text-slate-900" x-text="mcpInfo().transport || 'streamable-http'"></div>
-                  </div>
-                  <div class="px-4 py-4 text-sm leading-6 text-slate-600">当前规划固定为远程 HTTP MCP，不复用后台登录态。</div>
-                </div>
-                <div class="grid gap-0 border-t border-slate-200 divide-y divide-slate-200 sm:grid-cols-[180px_minmax(0,1fr)] sm:divide-y-0 sm:divide-x">
-                  <div class="bg-white/72 px-4 py-4">
-                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">鉴权</div>
-                    <div class="mt-2 text-lg font-semibold text-slate-900" x-text="mcpInfo().auth_scheme || 'bearer'"></div>
-                  </div>
-                  <div class="px-4 py-4">
-                    <p class="text-sm leading-6 text-slate-600">在 .env 中配置</p>
-                    <div class="mt-4">
-                      <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Bearer Token</div>
-                      <div class="mt-3 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
-                        <div class="min-w-0 flex-1 bg-[rgba(24,43,78,0.96)] px-3 py-2.5 font-mono text-xs leading-6 text-slate-100/92" x-text="mcpAuthTokenDisplay()"></div>
-                        <div class="flex shrink-0 border-l border-slate-200 bg-white/96">
-                          <button
-                            type="button"
-                            @click="toggleMcpTokenVisibility"
-                            :disabled="!mcpHasAuthToken()"
-                            :aria-label="mcpTokenVisibilityLabel()"
-                            :title="mcpTokenVisibilityLabel()"
-                            class="grid h-full w-12 place-items-center text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <span class="material-symbols-rounded text-[20px]" x-text="mcpTokenVisibilityIcon()"></span>
-                          </button>
-                          <button
-                            type="button"
-                            @click="copyMcpToken"
-                            :disabled="!mcpHasAuthToken()"
-                            aria-label="复制 Token"
-                            title="复制 Token"
-                            class="grid h-full w-12 place-items-center border-l border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <span class="material-symbols-rounded text-[20px]">content_copy</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="border-t border-slate-200 px-4 py-4">
-                  <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">MCP 地址</div>
-                  <div class="mt-3 break-all text-sm font-medium leading-6 text-slate-800" x-text="mcpUrl() || '未启用'"></div>
-                  <div class="mt-4 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      @click="copyMcpUrl"
-                      class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-                    >
-                      <span class="material-symbols-rounded text-base">content_copy</span>
-                      复制 MCP 地址
-                    </button>
-                    <button
-                      type="button"
-                      @click="openMcpDocs"
-                      class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      <span class="material-symbols-rounded text-base">open_in_new</span>
-                      打开 MCP 文档
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white/78">
-                <div class="border-b border-slate-200 px-4 py-4">
-                  <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">客户端配置</div>
-                </div>
-                <div class="divide-y divide-slate-200">
-                  <template x-for="client in mcpClientConfigs()" :key="client.key">
-                    <section class="px-4 py-4">
-                      <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="flex min-w-0 items-start gap-3">
-                          <span
-                            aria-hidden="true"
-                            class="mt-0.5 block h-9 w-9 shrink-0 bg-contain bg-center bg-no-repeat"
-                            :style="{ backgroundImage: `url('${client.icon}')` }"
-                          ></span>
-                          <div class="min-w-0">
-                            <h3 class="text-base font-semibold text-slate-900" x-text="client.label"></h3>
-                            <p class="mt-1 text-sm leading-6 text-slate-600" x-text="client.location"></p>
-                          </div>
-                        </div>
-                        <div class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500" x-text="client.format"></div>
-                      </div>
-                      <pre class="mt-4 overflow-x-auto rounded-2xl border border-slate-900/60 bg-[rgba(24,43,78,0.96)] px-4 py-3 text-xs leading-6 text-slate-100/92"><code x-text="client.snippet"></code></pre>
-                    </section>
-                  </template>
-                </div>
-              </div>
-
-              <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white/78">
-                <div class="border-b border-slate-200 px-4 py-4">
-                  <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">典型流程</div>
-                </div>
-                <ol class="divide-y divide-slate-200">
-                  <template x-for="step in mcpFlowSteps" :key="step">
-                    <li class="px-4 py-4 text-sm leading-6 text-slate-700" x-text="step"></li>
-                  </template>
-                </ol>
-              </div>
-            </section>
-
-            <section
-              x-show="adminCompactPanelVisible('mcp', 'capabilities')"
-              class="admin-surface admin-right-pane rounded-3xl border border-white/70 bg-white/82 p-5 shadow-[var(--admin-shadow)] backdrop-blur-xl"
-            >
-              <h2 class="text-xl font-semibold tracking-[-0.03em] text-slate-900">能力范围与安全规则</h2>
-              <div class="admin-right-pane__body">
-                <div class="mt-4 overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/60">
-                  <template x-for="group in mcpCapabilityGroups" :key="group.key">
-                    <div class="border-b border-blue-100/80 px-4 py-4 last:border-b-0">
-                      <div class="flex items-center gap-3">
-                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-white text-blue-600 shadow-[0_10px_20px_rgba(37,99,235,0.10)]">
-                          <span class="material-symbols-rounded text-[20px]" x-text="group.icon"></span>
-                        </div>
-                        <div class="text-sm font-semibold text-slate-900" x-text="group.label"></div>
-                      </div>
-                      <div class="mt-3 flex flex-wrap gap-2">
-                        <template x-for="toolName in group.tools" :key="toolName">
-                          <div class="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700" x-text="toolName"></div>
-                        </template>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-
-                <div class="mt-5 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/80">
-                  <div class="border-b border-amber-200 px-4 py-4">
-                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">安全规则</div>
-                  </div>
-                  <ul class="divide-y divide-amber-200/80">
-                    <template x-for="rule in mcpSecurityRules" :key="rule">
-                      <li class="px-4 py-3 text-sm leading-6 text-slate-700" x-text="rule"></li>
-                    </template>
-                  </ul>
-                </div>
-              </div>
-            </section>
+    <div>
+      <template x-for="group in mcpCapabilityGroups" :key="group.key">
+        <section class="admin-r-section">
+          <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 place-items-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600">
+              <span class="material-symbols-rounded text-[20px]" x-text="group.icon"></span>
+            </span>
+            <div class="text-sm text-slate-900" x-text="group.label"></div>
           </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <template x-for="toolName in group.tools" :key="toolName">
+              <span class="admin-r-pill" x-text="toolName"></span>
+            </template>
+          </div>
+        </section>
+      </template>
+    </div>
+
+    <section class="admin-r-section">
+      <div class="admin-r-label text-amber-700">安全规则</div>
+      <ul class="mt-3 divide-y divide-amber-200/80 rounded-lg border border-amber-200 bg-amber-50/75">
+        <template x-for="rule in mcpSecurityRules" :key="rule">
+          <li class="px-4 py-3 text-sm leading-6 text-slate-700" x-text="rule"></li>
+        </template>
+      </ul>
+    </section>
+
+    <section class="admin-r-section">
+      <div class="admin-r-label">典型流程</div>
+      <ol class="mt-3 divide-y divide-blue-100 rounded-lg border border-blue-100 bg-slate-50/75">
+        <template x-for="step in mcpFlowSteps" :key="step">
+          <li class="px-4 py-3 text-sm leading-6 text-slate-700" x-text="step"></li>
+        </template>
+      </ol>
+    </section>
+  </aside>
+</div>
