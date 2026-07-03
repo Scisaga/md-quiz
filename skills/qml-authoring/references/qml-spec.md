@@ -75,6 +75,7 @@ trait:
 ## Q2 [multiple] (6) {partial=true}
 ## Q3 [short] {max=10, answer_time=10m}
 ## Q4 [single] (0) {scoring=traits, answer_time=20s}
+## Q5 [multiple] (1) {scoring=completion, answer_time=30s}
 ```
 
 规则：
@@ -88,9 +89,11 @@ trait:
   - `media=./assets/q1.png`
   - `answer_time=45s`
   - `scoring=traits`
+  - `scoring=completion`
 - 默认情况下，`single` 是“有正确答案的单选题”
 - 当 `single` 使用 `{scoring=traits}` 时，它表示“无正确答案的量表题”
 - trait 量表题推荐使用 `(0)`，因为其得分来自选项权重，而不是答题正确性
+- 当 `single` / `multiple` 使用 `{scoring=completion}` 时，它表示“作答计分题”：没有正确答案、不做维度评估，只要选择至少一个合法选项就得到该题满分
 
 ## 题干与图片
 
@@ -125,10 +128,24 @@ trait 量表题示例：
 
 - 默认模式下，正确答案在选项字母后加 `*`
 - `single` + `{scoring=traits}` 模式下不得出现 `*`
+- `single` / `multiple` + `{scoring=completion}` 模式下不得出现 `*`，也不得写选项级 `traits`
 - trait 量表题的得分来自选项上的 `traits`
 - 选项可追加 traits / points 等属性
 - `traits` 的格式为 `KEY:INT[,KEY:INT...]`
 - 当题目使用 `{scoring=traits}` 时，建议至少一个非中立选项带 `traits`
+
+作答计分题示例：
+
+```markdown
+## Q2 [multiple] (1) {scoring=completion, answer_time=30s}
+
+您目前可以持续深耕并直接触达资金资源的城市或地区有哪些？可多选。
+
+- A) 北京
+- B) 上海
+- C) 深圳
+- D) 其他城市或地区
+```
 
 ## 简答题
 

@@ -6,6 +6,7 @@
 
 - `candidate`
 - `candidate_resume`
+- `candidate_business_card`
 - `quiz_definition`
 - `quiz_version`
 - `assignment`
@@ -76,6 +77,26 @@
   - 保存 API / Worker / Scheduler 心跳
 
 业务主数据同样已经落在 PostgreSQL，对应表结构以 `backend/md_quiz/storage/db.py:init_db()` 为准。
+
+### `quiz_definition`
+
+公开邀约配置保存在测验定义维度：
+
+- `public_invite_enabled`
+- `public_invite_token`
+- `public_invite_material_mode`：取值 `none | resume | business_card`，默认 `resume`
+- `public_invite_ignore_timing`：默认 `false`，为 `true` 时新公开答题实例关闭倒计时
+
+公开邀约创建 assignment 时会把当前 `public_invite_material_mode` 快照到 `assignment.public_invite.material_mode`，并把 `public_invite_ignore_timing` 写入 assignment 的 `ignore_timing`。后续管理员调整只影响新进入者。
+
+### `candidate`
+
+候选人维度保存可复用资料：
+
+- 简历字段：`resume_bytes / resume_filename / resume_mime / resume_size / resume_parsed / resume_parsed_at`
+- 名片字段：`business_card_bytes / business_card_filename / business_card_mime / business_card_size / business_card_uploaded_at`
+
+名片不复用简历字段。当前版本只保存名片文件和元数据，不做 OCR 或结构化解析。
 
 ## 迁移说明
 

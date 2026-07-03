@@ -16,7 +16,7 @@ export function createPublicState() {
     viewCard: "unavailable",
     route: { kind: "", token: "" },
     sessionId: "",
-    state: { step: "", assignment: {}, quiz: {}, result: {}, resume: {}, verify: {}, unavailable: {} },
+    state: { step: "", assignment: {}, quiz: {}, result: {}, intake: {}, resume: {}, verify: {}, unavailable: {} },
     forms: {
       verify: { name: "", phone: "", sms_code: "", sms_code_digits: Array(OTP_LENGTH).fill("") },
     },

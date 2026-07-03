@@ -3,7 +3,7 @@
 当前前端保持两套 Alpine SPA，并继续复用 FastAPI 的统一入口契约：
 
 - `/admin*` 返回 `static/admin/index.html`
-- `/p/*`、`/t/*`、`/resume/*`、`/quiz/*`、`/exam/*`、`/done/*`、`/a/*` 返回 `static/public/index.html`
+- `/p/*`、`/t/*`、`/intake/*`、`/resume/*`、`/quiz/*`、`/exam/*`、`/done/*`、`/a/*` 返回 `static/public/index.html`
 
 ## 总体形态
 
@@ -76,12 +76,12 @@
 - `static/public/modules/verify.js`
   - 短信验证码发送、OTP 输入与校验
 - `static/public/modules/resume.js`
-  - 公开邀约简历上传
+  - 公开邀约资料采集；按 `material_mode` 渲染简历或名片上传、复用逻辑
 - `static/public/modules/quiz.js`
   - 当前题展示、自动保存、倒计时、超时提交、手势交互
 - `static/public/views/*.html`
   - 候选人视图片段
-  - 当前视图包括：`start`、`resume`、`question`、`done`、`unavailable`
+  - 当前视图包括：`start`、`intake`、`question`、`done`、`unavailable`；旧 `resume` 路由复用 intake 片段
 
 ### 视图切换流程
 
@@ -89,7 +89,7 @@
 2. `/p/{public_token}` 先调用 `/api/public/invites/{public_token}/ensure` 换到真实 attempt token
 3. 路由模块为当前 token 建立 `sessionStorage` 会话 ID
 4. 再请求 `/api/public/attempt/{token}`
-5. 根据返回的 `state.step` 把 `viewCard` 切到 `start / resume / question / done / unavailable`
+5. 根据返回的 `state.step` 把 `viewCard` 切到 `start / intake / question / done / unavailable`；旧 `resume` step 也切到 `intake`
 6. `view-loader.js` 把对应 HTML 片段挂到 `viewMount`
 
 ## 共享层

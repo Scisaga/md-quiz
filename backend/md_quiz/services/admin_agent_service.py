@@ -498,6 +498,8 @@ class AdminAgentService:
             quiz_key = str(item.get("quiz_key") or "").strip()
             cfg = exam_helpers.get_public_invite_config(quiz_key)
             token = str(cfg.get("token") or "").strip()
+            material_mode = exam_helpers.normalize_public_invite_material_mode(cfg.get("material_mode"))
+            ignore_timing = bool(cfg.get("ignore_timing"))
             result.append(
                 {
                     "id": int(item.get("id") or 0),
@@ -518,6 +520,8 @@ class AdminAgentService:
                     "last_sync_error": str(item.get("last_sync_error") or "").strip(),
                     "public_invite_enabled": bool(cfg.get("enabled")),
                     "public_invite_token": token,
+                    "public_invite_material_mode": material_mode,
+                    "public_invite_ignore_timing": ignore_timing,
                     "public_invite_path": f"/p/{token}" if token and bool(cfg.get("enabled")) else "",
                     "public_invite_qr_path": (
                         f"/api/public/invites/{token}/qr.png" if token and bool(cfg.get("enabled")) else ""
@@ -542,6 +546,8 @@ class AdminAgentService:
         quiz_metadata = exam_helpers.build_quiz_metadata(spec)
         cfg = exam_helpers.get_public_invite_config(key)
         token = str(cfg.get("token") or "").strip()
+        material_mode = exam_helpers.normalize_public_invite_material_mode(cfg.get("material_mode"))
+        ignore_timing = bool(cfg.get("ignore_timing"))
         versions = []
         for item in deps.list_quiz_versions(key):
             versions.append(
@@ -575,6 +581,8 @@ class AdminAgentService:
                 "last_sync_error": str(exam.get("last_sync_error") or "").strip(),
                 "public_invite_enabled": bool(cfg.get("enabled")),
                 "public_invite_token": token,
+                "public_invite_material_mode": material_mode,
+                "public_invite_ignore_timing": ignore_timing,
                 "public_invite_path": f"/p/{token}" if token and bool(cfg.get("enabled")) else "",
                 "public_invite_qr_path": (
                     f"/api/public/invites/{token}/qr.png" if token and bool(cfg.get("enabled")) else ""
@@ -591,19 +599,37 @@ class AdminAgentService:
             "sync_state": deps.read_exam_repo_sync_state(),
         }
 
-    def quiz_set_public_invite(self, quiz_key: str, *, enabled: bool) -> dict[str, Any]:
+    def quiz_set_public_invite(
+        self,
+        quiz_key: str,
+        *,
+        enabled: bool,
+        material_mode: str | None = None,
+        ignore_timing: bool | None = None,
+    ) -> dict[str, Any]:
         key = str(quiz_key or "").strip()
         exam = deps.get_quiz_definition(key)
         if not exam:
             raise FileNotFoundError(key)
-        cfg = exam_helpers.set_public_invite_enabled(key, enabled)
+        cfg = exam_helpers.set_public_invite_enabled(
+            key,
+            enabled,
+            material_mode=material_mode,
+            ignore_timing=ignore_timing,
+        )
         token = str(cfg.get("token") or "").strip()
+        material_mode = exam_helpers.normalize_public_invite_material_mode(cfg.get("material_mode"))
+        saved_ignore_timing = bool(cfg.get("ignore_timing"))
         try:
             deps.log_event(
                 "exam.public_invite.enable" if enabled else "exam.public_invite.disable",
                 actor="mcp",
                 quiz_key=key,
-                meta={"public_token": token},
+                meta={
+                    "public_token": token,
+                    "material_mode": material_mode,
+                    "ignore_timing": saved_ignore_timing,
+                },
             )
         except Exception:
             pass
@@ -611,6 +637,8 @@ class AdminAgentService:
             "ok": True,
             "enabled": bool(cfg.get("enabled")),
             "token": token,
+            "material_mode": material_mode,
+            "ignore_timing": saved_ignore_timing,
             "public_path": f"/p/{token}" if bool(cfg.get("enabled")) and token else "",
             "qr_path": f"/api/public/invites/{token}/qr.png" if bool(cfg.get("enabled")) and token else "",
         }

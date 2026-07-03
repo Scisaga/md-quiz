@@ -1,0 +1,76 @@
+<section x-show="viewCard === 'intake'" class="mx-auto max-w-4xl space-y-8 py-4 sm:py-8">
+  <div class="max-w-2xl">
+    <div class="text-xs uppercase tracking-[0.28em] text-cyan-200/80" x-text="intakeEyebrow()"></div>
+    <h1
+      class="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white"
+      x-text="intakeTitle()"
+    ></h1>
+    <p class="mt-4 text-base leading-8 text-slate-200/88" x-text="intakeIntroText()"></p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
+    <div class="space-y-6">
+      <div class="rounded-lg border border-white/10 bg-white/6 px-5 py-5">
+        <div class="text-xs uppercase tracking-[0.22em] text-slate-400">参与者信息</div>
+        <div class="mt-4 space-y-3 text-sm text-slate-200">
+          <div>姓名：<span class="font-semibold text-white" x-text="intakeState()?.name || '-'"></span></div>
+          <div>手机号：<span class="font-mono text-white" x-text="intakeState()?.phone || '-'"></span></div>
+        </div>
+      </div>
+
+      <div
+        x-show="canUseExistingIntake()"
+        class="rounded-lg border border-emerald-300/20 bg-emerald-400/8 px-5 py-5"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-semibold text-white" x-text="existingMaterialTitle()"></div>
+            <p class="mt-2 text-sm leading-7 text-slate-200/88" x-text="existingMaterialHint()"></p>
+          </div>
+          <div class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100" x-text="existingMaterialBadgeText()"></div>
+        </div>
+        <div class="mt-5 grid gap-3 text-sm text-slate-200 sm:grid-cols-3">
+          <div>
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-400">文件名</div>
+            <div class="mt-2 break-all font-medium text-white" x-text="existingMaterialFilename()"></div>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-400" x-text="existingMaterialTimeLabel()"></div>
+            <div class="mt-2 text-white" x-text="existingMaterialTimeText()"></div>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-400">文件大小</div>
+            <div class="mt-2 text-white" x-text="existingMaterialSizeText()"></div>
+          </div>
+        </div>
+        <button
+          type="button"
+          @click="useExistingIntake"
+          :disabled="actionBusy"
+          class="mt-5 w-full rounded-md px-4 py-3 text-sm font-semibold transition"
+          :class="actionBusy ? 'cursor-not-allowed border border-white/10 bg-white/6 text-slate-400' : 'bg-emerald-400 text-slate-950 hover:bg-emerald-300'"
+          x-text="useExistingButtonText()"
+        ></button>
+      </div>
+    </div>
+
+    <form @submit.prevent="uploadIntake" class="rounded-lg border border-white/10 bg-slate-950/55 px-5 py-5">
+      <div class="text-sm font-semibold text-white" x-text="uploadTitle()"></div>
+      <p class="mt-2 text-sm leading-7 text-slate-300" x-text="uploadHintText()"></p>
+      <input
+        x-ref="intakeFile"
+        type="file"
+        :accept="intakeFileAccept()"
+        :capture="isBusinessCardIntake() ? 'environment' : null"
+        class="mt-5 block w-full text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-white/10 file:px-4 file:py-3 file:text-sm file:font-medium file:text-white hover:file:bg-white/16"
+      />
+      <button
+        type="submit"
+        :disabled="actionBusy"
+        class="mt-5 w-full rounded-md px-4 py-3 text-sm font-semibold transition"
+        :class="actionBusy ? 'cursor-not-allowed border border-white/10 bg-white/6 text-slate-400' : 'bg-emerald-400 text-slate-950 hover:bg-emerald-300'"
+        x-text="uploadButtonText()"
+      ></button>
+    </form>
+  </div>
+</section>

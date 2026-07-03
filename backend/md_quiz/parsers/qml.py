@@ -32,6 +32,7 @@ _OPTION_RE = re.compile(r"^\s*[-*]\s+(?P<key>[A-Z])(?P<correct>\*)?\)\s*(?P<body
 _ATTR_KV_RE = re.compile(r"(?P<k>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<v>[^,}]+)")
 _DURATION_RE = re.compile(r"^(?P<num>\d+)\s*(?P<unit>s|m|h)?$", re.IGNORECASE)
 _STANDALONE_MD_IMAGE_RE = re.compile(r"^\s*!\[[^\]]*]\((?P<path>[^)]+)\)\s*$")
+_KNOWN_SCORING_MODES = {"", "traits", "completion"}
 
 
 def _parse_attrs(attrs: str | None) -> dict[str, Any]:
@@ -248,7 +249,23 @@ def parse_qml_markdown(markdown_text: str) -> tuple[dict[str, Any], dict[str, An
         points = int(raw_points or 0)
         attrs = _parse_attrs(m.group("attrs"))
         scoring_mode = str(attrs.get("scoring") or "").strip().lower()
+        if scoring_mode not in _KNOWN_SCORING_MODES:
+            raise QmlParseError(
+                f"{qid} unsupported scoring mode: {scoring_mode}",
+                line=line_no(i),
+            )
+        if scoring_mode and qtype not in {"single", "multiple"}:
+            raise QmlParseError(
+                f"{qid} scoring mode only supports single/multiple",
+                line=line_no(i),
+            )
+        if scoring_mode == "traits" and qtype != "single":
+            raise QmlParseError(
+                f"{qid} traits scoring only supports single",
+                line=line_no(i),
+            )
         is_trait_single = qtype == "single" and scoring_mode == "traits"
+        is_completion_choice = qtype in {"single", "multiple"} and scoring_mode == "completion"
         partial = bool(attrs.get("partial", False))
         media = attrs.get("media", "")
         max_points = int(attrs.get("max", points if points else 0) or 0)
@@ -351,9 +368,20 @@ def parse_qml_markdown(markdown_text: str) -> tuple[dict[str, Any], dict[str, An
                         f"{qid} trait single must not use correct option (*)",
                         line=line_no(i),
                     )
+            elif is_completion_choice:
+                if correct_keys:
+                    raise QmlParseError(
+                        f"{qid} completion choice must not use correct option (*)",
+                        line=line_no(i),
+                    )
+                if any((o.get("traits") or {}) for o in options):
+                    raise QmlParseError(
+                        f"{qid} completion choice must not use option traits",
+                        line=line_no(i),
+                    )
             elif not correct_keys:
                 raise QmlParseError(f"{qid} has no correct option (*)", line=line_no(i))
-            if not is_trait_single and qtype == "single" and len(correct_keys) != 1:
+            if not is_trait_single and not is_completion_choice and qtype == "single" and len(correct_keys) != 1:
                 raise QmlParseError(
                     f"{qid} single must have exactly 1 correct option",
                     line=line_no(i),
@@ -377,6 +405,8 @@ def parse_qml_markdown(markdown_text: str) -> tuple[dict[str, Any], dict[str, An
             "rubric": rubric,
             "llm": q_llm,
         }
+        if scoring_mode:
+            q["scoring_mode"] = scoring_mode
 
         public_q = {
             "qid": qid,
@@ -390,6 +420,8 @@ def parse_qml_markdown(markdown_text: str) -> tuple[dict[str, Any], dict[str, An
             "stem_md": stem_md,
             "options": [{"key": o["key"], "text": o["text"]} for o in options],
         }
+        if scoring_mode:
+            public_q["scoring_mode"] = scoring_mode
         return q, public_q
 
     for pos, start_idx in enumerate(header_indices):

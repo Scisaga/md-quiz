@@ -8,9 +8,48 @@ from backend.md_quiz.services import grading_analysis, grading_short_answer, gra
 from backend.md_quiz.services.llm_client import call_llm_json, call_llm_text
 
 
+def _question_scoring_mode(q: dict[str, Any]) -> str:
+    return str(q.get("scoring_mode") or q.get("scoring") or "").strip().lower()
+
+
+def _valid_option_keys(q: dict[str, Any]) -> set[str]:
+    return {
+        str(option.get("key") or "").strip()
+        for option in (q.get("options") or [])
+        if str((option or {}).get("key") or "").strip()
+    }
+
+
+def _grade_completion(q: dict[str, Any], ans: Any) -> int:
+    points = int(q.get("points") or q.get("max_points") or 0)
+    valid_keys = _valid_option_keys(q)
+    if not valid_keys:
+        return 0
+
+    qtype = q["type"]
+    if qtype == "single":
+        answer_key = str(ans or "").strip()
+        return points if answer_key in valid_keys else 0
+
+    if qtype == "multiple":
+        if not isinstance(ans, list):
+            return 0
+        selected = {
+            str(item or "").strip()
+            for item in ans
+            if str(item or "").strip() in valid_keys
+        }
+        return points if selected else 0
+
+    return 0
+
+
 def _grade_objective(q: dict[str, Any], ans: Any) -> int:
     qtype = q["type"]
     points = int(q.get("points") or 0)
+
+    if _question_scoring_mode(q) == "completion":
+        return _grade_completion(q, ans)
 
     if qtype == "single":
         correct_key = next(
@@ -61,7 +100,11 @@ def grade_attempt(spec: dict[str, Any], assignment: dict[str, Any]) -> dict[str,
         if qtype in {"single", "multiple"}:
             scored = _grade_objective(q, answers.get(qid))
             raw_scored += scored
-            objective_details.append({"qid": qid, "score": scored, "max": max_points})
+            detail = {"qid": qid, "score": scored, "max": max_points}
+            scoring_mode = _question_scoring_mode(q)
+            if scoring_mode:
+                detail["scoring_mode"] = scoring_mode
+            objective_details.append(detail)
             continue
 
         if qtype != "short":

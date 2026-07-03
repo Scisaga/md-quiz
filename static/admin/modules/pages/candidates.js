@@ -8,6 +8,14 @@ export function createAdminCandidatesModule() {
       return [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"].some((ext) => name.endsWith(ext));
     },
 
+    formatFileSize(value) {
+      const size = Number(value || 0);
+      if (!Number.isFinite(size) || size <= 0) return "暂无记录";
+      if (size < 1024) return `${Math.round(size)} B`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+      return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    },
+
     candidateResumeParsedData() {
       const details = this.candidateDetail?.resume_parsed?.details;
       const data = details?.data;
@@ -483,6 +491,11 @@ export function createAdminCandidatesModule() {
     downloadCandidateResume() {
       if (!this.candidateDetail.candidate?.id) return;
       window.location.href = `/api/admin/candidates/${this.candidateDetail.candidate.id}/resume`;
+    },
+
+    downloadCandidateBusinessCard() {
+      if (!this.candidateDetail.candidate?.id || !this.candidateDetail.candidate?.business_card_filename) return;
+      window.location.href = `/api/admin/candidates/${this.candidateDetail.candidate.id}/business-card`;
     },
 
     openCandidateResumeReparsePicker() {

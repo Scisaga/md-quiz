@@ -102,14 +102,22 @@
 
 开启或关闭公开邀约。
 
+请求字段：
+
+- `enabled`
+- `material_mode`：可选，取值 `none | resume | business_card`；未传时沿用当前配置，首次启用默认 `resume`
+- `ignore_timing`：可选；未传时沿用当前配置，`true` 时新公开答题实例关闭倒计时
+
 返回字段包括：
 
 - `enabled`
 - `token`
+- `material_mode`
+- `ignore_timing`
 - `public_url`
 - `qr_url`
 
-当关闭公开邀约时，`public_url` 和 `qr_url` 会返回空字符串。
+公开邀约身份要求固定为姓名与手机号短信验证。`material_mode` 控制验证后的资料采集步骤：`none` 直接进入答题，`resume` 要求简历，`business_card` 要求名片。`ignore_timing=true` 只影响之后通过公开链接创建的新答题实例。关闭公开邀约时，`public_url` 和 `qr_url` 会返回空字符串，但不会清空已有 `material_mode` 与 `ignore_timing`。
 
 ### `GET /api/admin/candidates`
 
@@ -134,6 +142,10 @@
 ### `GET /api/admin/candidates/{candidate_id}/resume`
 
 下载候选人简历。
+
+### `GET /api/admin/candidates/{candidate_id}/business-card`
+
+下载候选人名片文件。该接口需要管理员登录。
 
 ### `POST /api/admin/candidates/{candidate_id}/resume/reparse`
 
@@ -174,6 +186,10 @@
 - `stem_html`
 - `rubric_html`
 - `options[].text_html`
+- `review_kind`：`objective` / `completion` / `traits` / `short`
+- `scoring_mode`：选择题计分模式；作答计分题为 `completion`
+
+当 `review_kind=completion` 时，该题没有正确答案，`correct_options` 为空，候选人选择任一合法选项即按该题满分计入总分。
 
 ### `GET /api/admin/assignments/{token}/qr.png`
 
@@ -292,10 +308,11 @@
 
 ### `GET /api/public/attempt/{token}`
 
-返回候选人端当前步骤、答题状态、线性题流状态、简历状态或判卷结果。
+返回候选人端当前步骤、答题状态、线性题流状态、资料采集状态或判卷结果。
 
 - `step=verify`：返回开始卡片所需的验证信息；主动邀约只返回手机号掩码和验证码入口，公开邀约返回姓名/手机号/验证码入口。
-- `step=resume`：公开邀约验证码通过但尚未建档时返回简历上传卡片信息。
+- `step=resume`：兼容旧公开邀约简历采集入口；payload 同时放在 `resume` 与 `intake` 字段。
+- `step=intake`：公开邀约验证码通过但尚未建档时返回资料采集卡片信息，`intake.material_mode` 为 `business_card` 时上传或复用名片。
 - `step=quiz`：返回开始卡片或当前题卡片需要的公开测验快照、当前题索引、当前题开始时间、跨会话重进计数等；若 assignment 的 `ignore_timing=true`，倒计时相关字段会归零。
 - `step=done`：返回结束卡片与判卷状态。
 
@@ -315,11 +332,23 @@
 验证短信认证并推进到下一步。
 
 - 主动邀约：只要求验证码。
-- 公开邀约：要求姓名、手机号与验证码；验证成功后进入简历上传或直接进入开始卡片。
+- 公开邀约：要求姓名、手机号与验证码；验证成功后按 assignment 快照中的 `public_invite.material_mode` 进入资料采集或直接进入开始卡片。旧 assignment 未带 `material_mode` 时按 `resume` 处理。
+
+### `POST /api/public/intake/upload`
+
+公开邀约资料采集上传接口。`material_mode=resume` 时上传简历并异步解析；`material_mode=business_card` 时仅保存名片图片和元数据，不做 OCR/解析。
+
+### `POST /api/public/intake/use-existing`
+
+公开邀约复用已有资料接口。简历和名片都按手机号候选人维度复用，复用前仍要求姓名匹配和短信验证通过。
 
 ### `POST /api/public/resume/upload`
 
-公开邀约场景上传简历并创建候选人。上传成功后立即放行到开始卡片，简历结构化解析改为异步 job 回填。
+公开邀约场景上传简历并创建候选人。该旧接口作为 `resume` 分支兼容入口保留；上传成功后立即放行到开始卡片，简历结构化解析改为异步 job 回填。
+
+### `POST /api/public/resume/use-existing`
+
+公开邀约旧简历复用接口，兼容旧前端入口，仅适用于 `resume` 分支。
 
 ### `POST /api/public/answers/{token}`
 

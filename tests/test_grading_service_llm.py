@@ -50,6 +50,74 @@ class TestGradingServiceLLM(unittest.TestCase):
             gs.call_llm_json = orig_json
             gs.call_llm_text = orig_text
 
+    def test_completion_choices_score_answer_presence_and_mark_analysis_prompt(self):
+        import backend.md_quiz.services.grading_service as gs
+
+        def fake_call_llm_json(prompt: str, model=None):  # noqa: ARG001
+            raise AssertionError("LLM json should not be called for completion choices")
+
+        def fake_call_llm_text(prompt: str, model=None):  # noqa: ARG001
+            self.assertIn("作答计分", prompt)
+            self.assertIn("不代表答对/答错", prompt)
+            return "作答计分题已完成，信息选择较完整。"
+
+        orig_json = gs.call_llm_json
+        orig_text = gs.call_llm_text
+        gs.call_llm_json = fake_call_llm_json
+        gs.call_llm_text = fake_call_llm_text
+        try:
+            spec = {
+                "title": "completion-demo",
+                "questions": [
+                    {
+                        "qid": "Q1",
+                        "type": "single",
+                        "scoring_mode": "completion",
+                        "points": 2,
+                        "stem_md": "请选择当前所在城市。",
+                        "options": [
+                            {"key": "A", "text": "北京"},
+                            {"key": "B", "text": "上海"},
+                        ],
+                    },
+                    {
+                        "qid": "Q2",
+                        "type": "multiple",
+                        "scoring_mode": "completion",
+                        "points": 3,
+                        "stem_md": "请选择可触达资源。",
+                        "options": [
+                            {"key": "A", "text": "产业资源"},
+                            {"key": "B", "text": "资金资源"},
+                        ],
+                    },
+                    {
+                        "qid": "Q3",
+                        "type": "multiple",
+                        "scoring_mode": "completion",
+                        "points": 1,
+                        "stem_md": "请选择其他资源。",
+                        "options": [
+                            {"key": "A", "text": "渠道资源"},
+                            {"key": "B", "text": "专家资源"},
+                        ],
+                    },
+                ],
+            }
+            assignment = {"answers": {"Q1": "B", "Q2": ["B", "Z", "B"], "Q3": []}}
+            grading = gs.grade_attempt(spec, assignment)
+            self.assertEqual(grading["result_mode"], "scored")
+            self.assertEqual(grading["raw_total"], 6)
+            self.assertEqual(grading["raw_scored"], 5)
+            self.assertEqual(grading["total"], 5)
+            self.assertEqual(grading["total_max"], 6)
+            self.assertEqual(grading["objective"][0]["scoring_mode"], "completion")
+            self.assertEqual(grading["objective"][1]["scoring_mode"], "completion")
+            self.assertEqual(grading["objective"][2]["score"], 0)
+        finally:
+            gs.call_llm_json = orig_json
+            gs.call_llm_text = orig_text
+
     def test_traits_only_exam_aggregates_traits_and_generates_analysis_and_remark(self):
         import backend.md_quiz.services.grading_service as gs
 
@@ -108,6 +176,63 @@ class TestGradingServiceLLM(unittest.TestCase):
 
             remark = gs.generate_candidate_remark(spec, assignment, grading)
             self.assertEqual(remark, "结果显示你更偏向 I，表达前更习惯先整理思路。整体偏好清晰，但仍保留一定情境弹性。")
+        finally:
+            gs.call_llm_json = orig_json
+            gs.call_llm_text = orig_text
+
+    def test_completion_choices_can_mix_with_traits(self):
+        import backend.md_quiz.services.grading_service as gs
+
+        def fake_call_llm_json(prompt: str, model=None):  # noqa: ARG001
+            raise AssertionError("LLM json should not be called")
+
+        def fake_call_llm_text(prompt: str, model=None):  # noqa: ARG001
+            self.assertIn("作答计分", prompt)
+            self.assertIn("【Traits 摘要】", prompt)
+            return "作答计分信息已完成，traits 结果显示偏向 I。"
+
+        orig_json = gs.call_llm_json
+        orig_text = gs.call_llm_text
+        gs.call_llm_json = fake_call_llm_json
+        gs.call_llm_text = fake_call_llm_text
+        try:
+            spec = {
+                "title": "completion-traits-demo",
+                "trait": {
+                    "dimensions": ["I", "E"],
+                    "analysis_guidance": {"paired_dimensions": ["I/E：比较独立与互动"]},
+                },
+                "questions": [
+                    {
+                        "qid": "Q1",
+                        "type": "multiple",
+                        "scoring_mode": "completion",
+                        "points": 1,
+                        "stem_md": "请选择可触达资源。",
+                        "options": [
+                            {"key": "A", "text": "产业资源"},
+                            {"key": "B", "text": "资金资源"},
+                        ],
+                    },
+                    {
+                        "qid": "Q2",
+                        "type": "single",
+                        "points": 0,
+                        "max_points": 0,
+                        "stem_md": "更偏好哪种工作方式？",
+                        "options": [
+                            {"key": "A", "text": "独立推进", "traits": {"I": 2}},
+                            {"key": "B", "text": "频繁讨论", "traits": {"E": 2}},
+                        ],
+                    },
+                ],
+            }
+            assignment = {"answers": {"Q1": ["A"], "Q2": "A"}}
+            grading = gs.grade_attempt(spec, assignment)
+            self.assertEqual(grading["result_mode"], "mixed")
+            self.assertEqual(grading["raw_total"], 1)
+            self.assertEqual(grading["raw_scored"], 1)
+            self.assertEqual(grading["traits"]["primary_dimensions"], ["I"])
         finally:
             gs.call_llm_json = orig_json
             gs.call_llm_text = orig_text

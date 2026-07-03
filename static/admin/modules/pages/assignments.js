@@ -141,8 +141,15 @@ export function createAdminAssignmentsModule() {
         return explicit;
       }
       const type = String(question?.type || "").trim().toLowerCase();
+      const scoringMode = String(question?.scoring_mode || question?.scoring || "").trim().toLowerCase();
       if (type === "short") {
         return "short";
+      }
+      if ((type === "single" || type === "multiple") && scoringMode === "completion") {
+        return "completion";
+      }
+      if ((type === "single" || type === "multiple") && scoringMode === "traits") {
+        return "traits";
       }
       if (type === "single" || type === "multiple") {
         const options = Array.isArray(question?.options) ? question.options : [];
@@ -158,6 +165,10 @@ export function createAdminAssignmentsModule() {
 
     attemptReviewIsTraitQuestion(question) {
       return this.attemptReviewQuestionKind(question) === "traits";
+    },
+
+    attemptReviewIsCompletionQuestion(question) {
+      return this.attemptReviewQuestionKind(question) === "completion";
     },
 
     attemptReviewIsObjectiveQuestion(question) {
@@ -197,6 +208,9 @@ export function createAdminAssignmentsModule() {
       if (this.attemptReviewIsTraitQuestion(question)) {
         return hasAnswer ? "已作答" : "未作答";
       }
+      if (this.attemptReviewIsCompletionQuestion(question)) {
+        return hasAnswer ? "已作答得分" : "未作答";
+      }
       if (this.attemptReviewIsShortQuestion(question)) {
         if (!hasAnswer) {
           return "未作答";
@@ -230,6 +244,8 @@ export function createAdminAssignmentsModule() {
         classes.push("border-blue-200 bg-blue-50 text-blue-700");
       } else if (label === "待评分") {
         classes.push("border-amber-200 bg-amber-50 text-amber-700");
+      } else if (label === "已作答得分") {
+        classes.push("border-sky-200 bg-sky-50 text-sky-700");
       } else if (label === "已作答") {
         classes.push("border-sky-200 bg-sky-50 text-sky-700");
       } else {
@@ -252,7 +268,7 @@ export function createAdminAssignmentsModule() {
       const classes = ["flex items-start gap-2.5 px-3 py-3"];
       const selected = this.attemptReviewOptionIsSelected(question, option);
       const correct = this.attemptReviewOptionIsCorrect(question, option);
-      if (this.attemptReviewIsTraitQuestion(question)) {
+      if (this.attemptReviewIsTraitQuestion(question) || this.attemptReviewIsCompletionQuestion(question)) {
         classes.push(selected ? "bg-sky-50/85" : "bg-slate-50/80");
       } else if (selected && correct) {
         classes.push("bg-emerald-50/85");
@@ -268,7 +284,7 @@ export function createAdminAssignmentsModule() {
 
     attemptReviewOptionSelectionBadgeClass(question, option) {
       const classes = ["shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold"];
-      if (this.attemptReviewIsTraitQuestion(question)) {
+      if (this.attemptReviewIsTraitQuestion(question) || this.attemptReviewIsCompletionQuestion(question)) {
         classes.push("border-sky-200 bg-white text-sky-700");
       } else if (this.attemptReviewOptionIsCorrect(question, option)) {
         classes.push("border-emerald-200 bg-white text-emerald-700");

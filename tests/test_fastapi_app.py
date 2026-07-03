@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
@@ -20,6 +20,7 @@ from backend.md_quiz.storage.db import (
     create_quiz_version,
     delete_exam_domain_data_by_quiz_key,
     get_candidate,
+    get_candidate_business_card,
     get_assignment_record,
     get_quiz_archive_by_token,
     get_quiz_paper_by_token,
@@ -33,6 +34,7 @@ from backend.md_quiz.storage.db import (
     save_quiz_definition,
     set_exam_public_invite,
     set_runtime_kv,
+    update_candidate_business_card,
     update_candidate_resume,
 )
 
@@ -386,8 +388,8 @@ def _seed_exam_with_review_content(quiz_key: str) -> int:
         "tags": ["review", "attempt-detail"],
         "schema_version": 2,
         "format": "qml-v2",
-        "question_count": 4,
-        "question_counts": {"single": 2, "multiple": 1, "short": 1},
+        "question_count": 5,
+        "question_counts": {"single": 2, "multiple": 2, "short": 1},
         "estimated_duration_minutes": 6,
         "trait": {
             "dimensions": ["I", "E"],
@@ -445,6 +447,19 @@ def _seed_exam_with_review_content(quiz_key: str) -> int:
                     {"key": "B", "text": "频繁讨论", "traits": {"E": 2}},
                 ],
             },
+            {
+                "qid": "Q5",
+                "label": "Q5 作答计分",
+                "type": "multiple",
+                "scoring_mode": "completion",
+                "max_points": 1,
+                "stem_md": "请选择目前可以触达的资源。",
+                "options": [
+                    {"key": "A", "text": "产业资源", "correct": False},
+                    {"key": "B", "text": "资金资源", "correct": False},
+                    {"key": "C", "text": "渠道资源", "correct": False},
+                ],
+            },
         ],
     }
     public_spec = {
@@ -454,8 +469,8 @@ def _seed_exam_with_review_content(quiz_key: str) -> int:
         "tags": ["review", "attempt-detail"],
         "schema_version": 2,
         "format": "qml-v2",
-        "question_count": 4,
-        "question_counts": {"single": 2, "multiple": 1, "short": 1},
+        "question_count": 5,
+        "question_counts": {"single": 2, "multiple": 2, "short": 1},
         "estimated_duration_minutes": 6,
         "trait": {"dimensions": ["I", "E"]},
         "questions": [
@@ -498,6 +513,19 @@ def _seed_exam_with_review_content(quiz_key: str) -> int:
                 "options": [
                     {"key": "A", "text": "独立推进"},
                     {"key": "B", "text": "频繁讨论"},
+                ],
+            },
+            {
+                "qid": "Q5",
+                "label": "Q5 作答计分",
+                "type": "multiple",
+                "scoring_mode": "completion",
+                "max_points": 1,
+                "stem_md": "请选择目前可以触达的资源。",
+                "options": [
+                    {"key": "A", "text": "产业资源"},
+                    {"key": "B", "text": "资金资源"},
+                    {"key": "C", "text": "渠道资源"},
                 ],
             },
         ],
@@ -629,6 +657,21 @@ def _seed_candidate_resume(candidate_id: int, *, filename: str = "resume.pdf", c
             "details": {"status": "done", "data": {"summary": "已存在简历"}},
             "source_filename": filename,
         },
+    )
+
+
+def _seed_candidate_business_card(
+    candidate_id: int,
+    *,
+    filename: str = "card.jpg",
+    content: bytes = b"\xff\xd8existing-card",
+) -> None:
+    update_candidate_business_card(
+        candidate_id,
+        business_card_bytes=content,
+        business_card_filename=filename,
+        business_card_mime="image/jpeg",
+        business_card_size=len(content),
     )
 
 
@@ -899,6 +942,8 @@ def test_public_invite_toggle_clears_link_when_disabled_and_exposes_qr(monkeypat
     enabled_payload = enable_response.json()
     public_token = str(enabled_payload["token"])
     assert enabled_payload["enabled"] is True
+    assert enabled_payload["material_mode"] == "resume"
+    assert enabled_payload["ignore_timing"] is False
     assert enabled_payload["public_url"].endswith(f"/p/{public_token}")
     assert enabled_payload["qr_url"] == f"/api/public/invites/{public_token}/qr.png"
 
@@ -906,6 +951,8 @@ def test_public_invite_toggle_clears_link_when_disabled_and_exposes_qr(monkeypat
     assert detail_enabled.status_code == 200
     enabled_quiz = detail_enabled.json()["quiz"]
     assert enabled_quiz["public_invite_enabled"] is True
+    assert enabled_quiz["public_invite_material_mode"] == "resume"
+    assert enabled_quiz["public_invite_ignore_timing"] is False
     assert enabled_quiz["public_invite_url"].endswith(f"/p/{public_token}")
     assert enabled_quiz["public_invite_qr_url"] == f"/api/public/invites/{public_token}/qr.png"
 
@@ -917,6 +964,8 @@ def test_public_invite_toggle_clears_link_when_disabled_and_exposes_qr(monkeypat
     assert disable_response.status_code == 200
     disabled_payload = disable_response.json()
     assert disabled_payload["enabled"] is False
+    assert disabled_payload["material_mode"] == "resume"
+    assert disabled_payload["ignore_timing"] is False
     assert disabled_payload["public_url"] == ""
     assert disabled_payload["qr_url"] == ""
 
@@ -924,8 +973,91 @@ def test_public_invite_toggle_clears_link_when_disabled_and_exposes_qr(monkeypat
     assert detail_disabled.status_code == 200
     disabled_quiz = detail_disabled.json()["quiz"]
     assert disabled_quiz["public_invite_enabled"] is False
+    assert disabled_quiz["public_invite_material_mode"] == "resume"
+    assert disabled_quiz["public_invite_ignore_timing"] is False
     assert disabled_quiz["public_invite_url"] == ""
     assert disabled_quiz["public_invite_qr_url"] == ""
+
+
+def test_public_invite_material_mode_can_switch_and_survives_disable(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-material-mode-demo")
+    _admin_login(client)
+
+    for mode in ("none", "resume", "business_card"):
+        response = client.post(
+            "/api/admin/quizzes/public-material-mode-demo/public-invite",
+            json={"enabled": True, "material_mode": mode},
+        )
+        assert response.status_code == 200
+        assert response.json()["enabled"] is True
+        assert response.json()["material_mode"] == mode
+
+        detail = client.get("/api/admin/quizzes/public-material-mode-demo")
+        assert detail.status_code == 200
+        assert detail.json()["quiz"]["public_invite_material_mode"] == mode
+
+        listing = client.get("/api/admin/quizzes")
+        assert listing.status_code == 200
+        item = next(it for it in listing.json()["items"] if it["quiz_key"] == "public-material-mode-demo")
+        assert item["public_invite_material_mode"] == mode
+
+    disable_response = client.post(
+        "/api/admin/quizzes/public-material-mode-demo/public-invite",
+        json={"enabled": False},
+    )
+
+    assert disable_response.status_code == 200
+    assert disable_response.json()["enabled"] is False
+    assert disable_response.json()["material_mode"] == "business_card"
+    detail_disabled = client.get("/api/admin/quizzes/public-material-mode-demo")
+    assert detail_disabled.status_code == 200
+    assert detail_disabled.json()["quiz"]["public_invite_material_mode"] == "business_card"
+
+
+def test_public_invite_ignore_timing_can_switch_and_survives_disable(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-ignore-timing-config-demo")
+    _admin_login(client)
+
+    enable_response = client.post(
+        "/api/admin/quizzes/public-ignore-timing-config-demo/public-invite",
+        json={"enabled": True, "material_mode": "none", "ignore_timing": True},
+    )
+
+    assert enable_response.status_code == 200
+    assert enable_response.json()["enabled"] is True
+    assert enable_response.json()["material_mode"] == "none"
+    assert enable_response.json()["ignore_timing"] is True
+
+    detail = client.get("/api/admin/quizzes/public-ignore-timing-config-demo")
+    assert detail.status_code == 200
+    assert detail.json()["quiz"]["public_invite_ignore_timing"] is True
+
+    listing = client.get("/api/admin/quizzes")
+    assert listing.status_code == 200
+    item = next(it for it in listing.json()["items"] if it["quiz_key"] == "public-ignore-timing-config-demo")
+    assert item["public_invite_ignore_timing"] is True
+
+    disable_response = client.post(
+        "/api/admin/quizzes/public-ignore-timing-config-demo/public-invite",
+        json={"enabled": False},
+    )
+
+    assert disable_response.status_code == 200
+    assert disable_response.json()["enabled"] is False
+    assert disable_response.json()["ignore_timing"] is True
+
+    reset_response = client.post(
+        "/api/admin/quizzes/public-ignore-timing-config-demo/public-invite",
+        json={"enabled": False, "ignore_timing": False},
+    )
+
+    assert reset_response.status_code == 200
+    assert reset_response.json()["ignore_timing"] is False
+    detail_reset = client.get("/api/admin/quizzes/public-ignore-timing-config-demo")
+    assert detail_reset.status_code == 200
+    assert detail_reset.json()["quiz"]["public_invite_ignore_timing"] is False
 
 
 def test_public_invite_url_uses_forwarded_https_scheme(monkeypatch, tmp_path):
@@ -1079,6 +1211,30 @@ def test_admin_candidate_resume_upload_marks_existing_candidate_as_updated(monke
     assert payload["candidate"]["phone"] == "13912345678"
     assert payload["candidate"]["resume_filename"] == "resume.pdf"
     assert _count_rows("candidate") == 1
+
+
+def test_admin_candidate_detail_exposes_and_downloads_business_card(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    candidate_id = create_candidate("名片下载候选人", "13912345679")
+    _seed_candidate_business_card(candidate_id, filename="candidate-card.jpg", content=b"card-bytes")
+
+    unauth_response = client.get(f"/api/admin/candidates/{candidate_id}/business-card")
+    assert unauth_response.status_code == 401
+
+    _admin_login(client)
+    detail_response = client.get(f"/api/admin/candidates/{candidate_id}")
+    assert detail_response.status_code == 200
+    candidate = detail_response.json()["candidate"]
+    assert candidate["business_card_filename"] == "candidate-card.jpg"
+    assert candidate["business_card_mime"] == "image/jpeg"
+    assert candidate["business_card_size"] == len(b"card-bytes")
+    assert candidate["business_card_uploaded_at"]
+
+    download_response = client.get(f"/api/admin/candidates/{candidate_id}/business-card")
+    assert download_response.status_code == 200
+    assert download_response.content == b"card-bytes"
+    assert download_response.headers["content-type"].startswith("image/jpeg")
+    assert "candidate-card.jpg" in download_response.headers["content-disposition"]
 
 
 def test_admin_candidate_resume_upload_job_enqueues_and_completes(monkeypatch, tmp_path):
@@ -1553,13 +1709,14 @@ def test_admin_attempt_detail_exposes_review_answers_and_evaluation(monkeypatch,
                 "Q2": ["A"],
                 "Q3": "我会先确认目标，再拆分步骤并验证结果。",
                 "Q4": "A",
+                "Q5": ["B"],
             },
             "candidate_remark": "表达清晰，建议补充结构化细节。",
             "grading": {
                 "status": "done",
                 "result_mode": "mixed",
-                "total": 9,
-                "total_max": 21,
+                "total": 10,
+                "total_max": 22,
                 "final_analysis": "综合分析：客观题基础扎实，开放题有一定思路。",
                 "traits": {
                     "question_count": 1,
@@ -1609,8 +1766,8 @@ def test_admin_attempt_detail_exposes_review_answers_and_evaluation(monkeypatch,
                 "title": "答题回放演示",
             },
             "timing": {"start_at": now, "end_at": now},
-            "total_score": 9,
-            "score_max": 21,
+            "total_score": 10,
+            "score_max": 22,
             "result_mode": "mixed",
             "traits": {
                 "question_count": 1,
@@ -1685,6 +1842,20 @@ def test_admin_attempt_detail_exposes_review_answers_and_evaluation(monkeypatch,
                     "score": None,
                     "score_max": 0,
                 },
+                {
+                    "qid": "Q5",
+                    "type": "multiple",
+                    "max_points": 1,
+                    "stem_md": "请选择目前可以触达的资源。",
+                    "options": [
+                        {"key": "A", "text": "产业资源"},
+                        {"key": "B", "text": "资金资源"},
+                        {"key": "C", "text": "渠道资源"},
+                    ],
+                    "answer": ["B"],
+                    "score": 1,
+                    "score_max": 1,
+                },
             ],
         },
     )
@@ -1695,7 +1866,7 @@ def test_admin_attempt_detail_exposes_review_answers_and_evaluation(monkeypatch,
     assert response.status_code == 200
     payload = response.json()
     review = payload["review"]
-    assert len(review["answers"]) == 4
+    assert len(review["answers"]) == 5
 
     single = review["answers"][0]
     assert single["label"] == "Q1 单选"
@@ -1725,11 +1896,20 @@ def test_admin_attempt_detail_exposes_review_answers_and_evaluation(monkeypatch,
     assert traits["selected_options"] == ["A"]
     assert traits["options"][0]["traits"] == {"I": 2}
 
+    completion = review["answers"][4]
+    assert completion["review_kind"] == "completion"
+    assert completion["scoring_mode"] == "completion"
+    assert completion["correct_options"] == []
+    assert completion["selected_options"] == ["B"]
+    assert completion["is_correct"] is None
+    assert completion["is_partial"] is False
+    assert completion["score_display"] == "1 / 1"
+
     evaluation = review["evaluation"]
     assert evaluation["result_mode"] == "mixed"
     assert evaluation["result_mode_label"] == "计分 + 量表"
-    assert evaluation["total_score"] == 9
-    assert evaluation["score_max"] == 21
+    assert evaluation["total_score"] == 10
+    assert evaluation["score_max"] == 22
     assert evaluation["final_analysis"] == "综合分析：客观题基础扎实，开放题有一定思路。"
     assert evaluation["candidate_remark"] == "表达清晰，建议补充结构化细节。"
     assert evaluation["primary_dimensions"] == ["I"]
@@ -1848,6 +2028,39 @@ def test_admin_assignments_list_supports_pagination_with_filters(monkeypatch, tm
     assert page_1_tokens.isdisjoint(page_2_tokens)
 
 
+def test_admin_assignments_list_includes_public_records_without_invite_dates_in_default_window(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    version_id = _seed_exam_with_metadata("assignment-public-window-demo")
+    candidate_id = create_candidate("公开筛选候选人", "13900000033")
+    create_quiz_paper(
+        candidate_id=candidate_id,
+        phone="13900000033",
+        quiz_key="assignment-public-window-demo",
+        quiz_version_id=version_id,
+        token="publicNoDate001",
+        source_kind="public",
+        status="finished",
+    )
+    _admin_login(client)
+
+    today = date.today()
+    response = client.get(
+        "/api/admin/assignments"
+        f"?start_from={(today - timedelta(days=6)).isoformat()}"
+        f"&end_to={today.isoformat()}"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    by_token = {item["token"]: item for item in payload["items"]}
+    assert "publicNoDate001" in by_token
+    assert by_token["publicNoDate001"]["source_kind"] == "public"
+    assert by_token["publicNoDate001"]["source_label"] == "公开邀约"
+    assert by_token["publicNoDate001"]["invite_start_date"] == ""
+    assert by_token["publicNoDate001"]["invite_end_date"] == ""
+    assert payload["summary"]["unhandled_finished_count"] == 1
+
+
 def test_admin_assignment_url_uses_forwarded_https_scheme(monkeypatch, tmp_path):
     client = _build_client(monkeypatch, tmp_path)
     _seed_exam_with_metadata("assignment-forwarded-demo")
@@ -1942,6 +2155,305 @@ def test_public_invite_only_enters_admin_list_after_verify_and_marks_public_sour
     assert items[0]["source_kind"] == "public"
     assert items[0]["source_label"] == "公开邀约"
     assert items[0]["require_phone_verification"] is True
+
+
+def test_public_invite_none_mode_verifies_and_skips_intake(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-none-demo")
+    set_exam_public_invite("public-none-demo", enabled=True, token="public-none-token", material_mode="none")
+
+    ensure_response = client.post("/api/public/invites/public-none-token/ensure")
+    assert ensure_response.status_code == 200
+    token = ensure_response.json()["token"]
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    assert assignment["public_invite"]["material_mode"] == "none"
+    assert get_quiz_paper_by_token(token) is None
+
+    assignment["sms_verify"] = {
+        "verified": True,
+        "phone": "13900000061",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    save_assignment_record(token, assignment)
+
+    verify_response = client.post(
+        "/api/public/verify",
+        json={"token": token, "name": "免资料候选人", "phone": "13900000061"},
+    )
+
+    assert verify_response.status_code == 200
+    assert verify_response.json()["redirect"] == f"/quiz/{token}"
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    candidate_id = int(assignment["candidate_id"])
+    assert candidate_id > 0
+    assert assignment["status"] == "verified"
+    assert "pending_profile" not in assignment
+    assert "pending_existing_candidate" not in assignment
+    candidate = get_candidate(candidate_id)
+    assert candidate is not None
+    assert candidate["name"] == "免资料候选人"
+    assert candidate["phone"] == "13900000061"
+    quiz_paper = get_quiz_paper_by_token(token)
+    assert quiz_paper is not None
+    assert quiz_paper["candidate_id"] == candidate_id
+    assert quiz_paper["source_kind"] == "public"
+    assert quiz_paper["status"] == "verified"
+
+    bootstrap = client.get(f"/api/public/attempt/{token}")
+    assert bootstrap.status_code == 200
+    assert bootstrap.json()["step"] == "quiz"
+
+
+def test_public_invite_ignore_timing_creates_unlimited_assignment(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-ignore-timing-flow-demo")
+    set_exam_public_invite(
+        "public-ignore-timing-flow-demo",
+        enabled=True,
+        token="public-ignore-timing-token",
+        material_mode="none",
+        ignore_timing=True,
+    )
+
+    ensure_response = client.post("/api/public/invites/public-ignore-timing-token/ensure")
+    assert ensure_response.status_code == 200
+    token = ensure_response.json()["token"]
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    assert assignment["ignore_timing"] is True
+    assert assignment["time_limit_seconds"] == 0
+    assert assignment["min_submit_seconds"] == 0
+    assert assignment["public_invite"]["material_mode"] == "none"
+    assert assignment["public_invite"]["ignore_timing"] is True
+
+    assignment["sms_verify"] = {
+        "verified": True,
+        "phone": "13900000068",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    save_assignment_record(token, assignment)
+
+    verify_response = client.post(
+        "/api/public/verify",
+        json={"token": token, "name": "公开不限时", "phone": "13900000068"},
+    )
+    assert verify_response.status_code == 200
+    assert verify_response.json()["redirect"] == f"/quiz/{token}"
+
+    bootstrap = client.get(f"/api/public/attempt/{token}")
+    assert bootstrap.status_code == 200
+    payload = bootstrap.json()
+    assert payload["step"] == "quiz"
+    assert payload["assignment"]["ignore_timing"] is True
+    assert payload["quiz"]["remaining_seconds"] == 0
+    assert payload["quiz"]["time_limit_seconds"] == 0
+    assert payload["quiz"]["question_flow"]["current_question_seconds"] == 0
+    assert payload["quiz"]["question_flow"]["current_question_remaining_seconds"] == 0
+
+
+def test_public_invite_business_card_upload_saves_card_and_enters_quiz(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-card-upload-demo")
+    set_exam_public_invite(
+        "public-card-upload-demo",
+        enabled=True,
+        token="public-card-upload-token",
+        material_mode="business_card",
+    )
+
+    ensure_response = client.post("/api/public/invites/public-card-upload-token/ensure")
+    assert ensure_response.status_code == 200
+    token = ensure_response.json()["token"]
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    assert assignment["public_invite"]["material_mode"] == "business_card"
+    assignment["sms_verify"] = {
+        "verified": True,
+        "phone": "13900000062",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    save_assignment_record(token, assignment)
+
+    verify_response = client.post(
+        "/api/public/verify",
+        json={"token": token, "name": "名片候选人", "phone": "13900000062"},
+    )
+
+    assert verify_response.status_code == 200
+    assert verify_response.json()["redirect"] == f"/intake/{token}"
+    bootstrap = client.get(f"/api/public/attempt/{token}")
+    assert bootstrap.status_code == 200
+    payload = bootstrap.json()
+    assert payload["step"] == "intake"
+    assert payload["intake"]["material_mode"] == "business_card"
+    assert payload["intake"]["mode"] == "upload_required"
+
+    legacy_resume_upload = client.post(
+        f"/api/public/resume/upload?token={token}",
+        files={"file": ("resume.pdf", b"%PDF-1.4 should-not-pass", "application/pdf")},
+    )
+    assert legacy_resume_upload.status_code == 400
+    assert legacy_resume_upload.json()["detail"] == "当前公开邀约要求上传名片"
+
+    upload_response = client.post(
+        f"/api/public/intake/upload?token={token}",
+        files={"file": ("card.jpg", b"new-business-card", "image/jpeg")},
+    )
+
+    assert upload_response.status_code == 200
+    assert upload_response.json()["redirect"] == f"/quiz/{token}"
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    candidate_id = int(assignment["candidate_id"])
+    assert candidate_id > 0
+    candidate = get_candidate(candidate_id)
+    assert candidate is not None
+    assert candidate["business_card_filename"] == "card.jpg"
+    assert int(candidate["business_card_size"] or 0) == len(b"new-business-card")
+    business_card = get_candidate_business_card(candidate_id)
+    assert business_card is not None
+    assert business_card["business_card_bytes"] == b"new-business-card"
+    quiz_paper = get_quiz_paper_by_token(token)
+    assert quiz_paper is not None
+    assert quiz_paper["candidate_id"] == candidate_id
+    assert quiz_paper["source_kind"] == "public"
+    assert quiz_paper["status"] == "verified"
+
+
+def test_public_invite_business_card_reuse_and_replace(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-card-reuse-a")
+    _seed_exam_with_metadata("public-card-reuse-b")
+    set_exam_public_invite(
+        "public-card-reuse-a",
+        enabled=True,
+        token="public-card-reuse-token-a",
+        material_mode="business_card",
+    )
+    set_exam_public_invite(
+        "public-card-reuse-b",
+        enabled=True,
+        token="public-card-reuse-token-b",
+        material_mode="business_card",
+    )
+    candidate_id = create_candidate("复用名片候选人", "13900000063")
+    _seed_candidate_business_card(candidate_id, filename="old-card.jpg", content=b"old-card")
+
+    ensure_a = client.post("/api/public/invites/public-card-reuse-token-a/ensure")
+    assert ensure_a.status_code == 200
+    token_a = ensure_a.json()["token"]
+    assignment_a = get_assignment_record(token_a)
+    assert assignment_a is not None
+    assignment_a["sms_verify"] = {
+        "verified": True,
+        "phone": "13900000063",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    save_assignment_record(token_a, assignment_a)
+
+    verify_a = client.post(
+        "/api/public/verify",
+        json={"token": token_a, "name": "复用名片候选人", "phone": "13900000063"},
+    )
+    assert verify_a.status_code == 200
+    assert verify_a.json()["redirect"] == f"/intake/{token_a}"
+    bootstrap_a = client.get(f"/api/public/attempt/{token_a}")
+    assert bootstrap_a.status_code == 200
+    payload_a = bootstrap_a.json()
+    assert payload_a["step"] == "intake"
+    assert payload_a["intake"]["mode"] == "reuse_or_replace"
+    assert payload_a["intake"]["existing_business_card"]["filename"] == "old-card.jpg"
+
+    use_existing = client.post("/api/public/intake/use-existing", json={"token": token_a})
+    assert use_existing.status_code == 200
+    assert use_existing.json()["redirect"] == f"/quiz/{token_a}"
+    quiz_paper_a = get_quiz_paper_by_token(token_a)
+    assert quiz_paper_a is not None
+    assert quiz_paper_a["candidate_id"] == candidate_id
+    assert quiz_paper_a["source_kind"] == "public"
+
+    ensure_b = client.post("/api/public/invites/public-card-reuse-token-b/ensure")
+    assert ensure_b.status_code == 200
+    token_b = ensure_b.json()["token"]
+    assignment_b = get_assignment_record(token_b)
+    assert assignment_b is not None
+    assignment_b["sms_verify"] = {
+        "verified": True,
+        "phone": "13900000063",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    save_assignment_record(token_b, assignment_b)
+    verify_b = client.post(
+        "/api/public/verify",
+        json={"token": token_b, "name": "复用名片候选人", "phone": "13900000063"},
+    )
+    assert verify_b.status_code == 200
+    assert verify_b.json()["redirect"] == f"/intake/{token_b}"
+
+    replace_response = client.post(
+        f"/api/public/intake/upload?token={token_b}",
+        files={"file": ("new-card.png", b"replacement-card", "image/png")},
+    )
+
+    assert replace_response.status_code == 200
+    assert replace_response.json()["redirect"] == f"/quiz/{token_b}"
+    business_card = get_candidate_business_card(candidate_id)
+    assert business_card is not None
+    assert business_card["business_card_bytes"] == b"replacement-card"
+    assert business_card["business_card_filename"] == "new-card.png"
+    quiz_paper_b = get_quiz_paper_by_token(token_b)
+    assert quiz_paper_b is not None
+    assert quiz_paper_b["candidate_id"] == candidate_id
+    assert quiz_paper_b["source_kind"] == "public"
+
+
+def test_public_invite_existing_phone_name_mismatch_counts_attempt(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    _seed_exam_with_metadata("public-name-mismatch-demo")
+    set_exam_public_invite(
+        "public-name-mismatch-demo",
+        enabled=True,
+        token="public-name-mismatch-token",
+        material_mode="business_card",
+    )
+    create_candidate("正确姓名", "13900000064")
+
+    ensure_response = client.post("/api/public/invites/public-name-mismatch-token/ensure")
+    assert ensure_response.status_code == 200
+    token = ensure_response.json()["token"]
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+
+    send_response = client.post(
+        "/api/public/sms/send",
+        json={"token": token, "name": "错误姓名", "phone": "13900000064"},
+    )
+    assert send_response.status_code == 400
+    assert send_response.json()["detail"] == "信息不匹配，请检查后重试"
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    assert int((assignment.get("verify") or {}).get("attempts") or 0) == 1
+
+    assignment["sms_verify"] = {
+        "verified": True,
+        "phone": "13900000064",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    save_assignment_record(token, assignment)
+
+    response = client.post(
+        "/api/public/verify",
+        json={"token": token, "name": "错误姓名", "phone": "13900000064"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "信息不匹配，请重试"
+    assignment = get_assignment_record(token)
+    assert assignment is not None
+    assert int((assignment.get("verify") or {}).get("attempts") or 0) == 2
+    assert get_quiz_paper_by_token(token) is None
 
 
 def test_public_verify_existing_candidate_with_resume_requires_confirmation_and_can_reuse(monkeypatch, tmp_path):

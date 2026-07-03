@@ -887,6 +887,7 @@ def generate_exam_from_prompt(prompt: str, *, include_diagrams: bool) -> tuple[s
     {
       "qid": "Q1",
       "type": "single|multiple|short",
+      "scoring": "objective|completion",
       "points": 5,
       "max_points": 10,
       "partial": false,
@@ -900,7 +901,8 @@ def generate_exam_from_prompt(prompt: str, *, include_diagrams: bool) -> tuple[s
 
 规则:
 0) 用户提示词优先级最高；若与默认示例或习惯冲突，一律以用户提示词为准，不得擅自缩减题量或改题型分布。
-1) single/multiple 必须提供 options，且有正确答案；single 只能一个正确答案。
+1) single/multiple 默认是 objective 题，必须提供 options 和正确答案；single 只能一个正确答案。
+1.1) 若用户需要“没有正确答案、只要作答就得分”的选择题，可设置 scoring="completion"；此时 options 不要提供 correct=true。
 2) short 必须提供 rubric 数组（至少 3 条）。
 3) points/max_points 必须是正整数。
 4) 若 include_diagrams=false，请不要输出 figure。
@@ -1012,7 +1014,10 @@ def generate_exam_from_prompt(prompt: str, *, include_diagrams: bool) -> tuple[s
         seen_qid.add(qid)
 
         stem = str(item.get("stem") or "").strip() or "请根据题意作答。"
-        partial = bool(item.get("partial")) if qtype == "multiple" else False
+        scoring_mode = str(item.get("scoring") or item.get("scoring_mode") or "").strip().lower()
+        if qtype not in {"single", "multiple"} or scoring_mode != "completion":
+            scoring_mode = ""
+        partial = bool(item.get("partial")) if qtype == "multiple" and scoring_mode != "completion" else False
 
         if qtype == "short":
             try:
@@ -1028,6 +1033,8 @@ def generate_exam_from_prompt(prompt: str, *, include_diagrams: bool) -> tuple[s
                 points = 5
             points = max(1, min(100, points))
             attrs_parts = []
+            if scoring_mode == "completion":
+                attrs_parts.append("scoring=completion")
             if partial:
                 attrs_parts.append("partial=true")
             attrs_parts.append(f"answer_time={_default_answer_time_seconds(qtype)}s")
@@ -1068,13 +1075,16 @@ def generate_exam_from_prompt(prompt: str, *, include_diagrams: bool) -> tuple[s
                 if not re.fullmatch(r"[A-Z]", key or ""):
                     key = chr(ord("A") + min(25, idx2))
                 text2 = str(op.get("text") or "").strip() or f"选项{key}"
-                out_opts.append({"key": key, "text": text2, "correct": bool(op.get("correct"))})
+                out_opts.append({"key": key, "text": text2, "correct": bool(op.get("correct")) and scoring_mode != "completion"})
             if len(out_opts) < 2:
                 out_opts = [
-                    {"key": "A", "text": "选项A", "correct": True},
+                    {"key": "A", "text": "选项A", "correct": scoring_mode != "completion"},
                     {"key": "B", "text": "选项B", "correct": False},
                 ]
-            if qtype == "single":
+            if scoring_mode == "completion":
+                for x in out_opts:
+                    x["correct"] = False
+            elif qtype == "single":
                 correct_ix = [i for i, x in enumerate(out_opts) if x["correct"]]
                 if len(correct_ix) != 1:
                     for x in out_opts:

@@ -153,14 +153,25 @@ def toggle_exam_public_invite(quiz_key: str, payload: shared.PublicInviteToggleP
     exam = shared.deps.get_quiz_definition(str(quiz_key or "").strip())
     if not exam:
         raise shared.HTTPException(status_code=404, detail="测验不存在")
-    cfg = shared.exam_helpers.set_public_invite_enabled(str(quiz_key or "").strip(), payload.enabled)
+    cfg = shared.exam_helpers.set_public_invite_enabled(
+        str(quiz_key or "").strip(),
+        payload.enabled,
+        material_mode=payload.material_mode,
+        ignore_timing=payload.ignore_timing,
+    )
     public_token = str(cfg.get("token") or "").strip()
+    material_mode = shared.exam_helpers.normalize_public_invite_material_mode(cfg.get("material_mode"))
+    ignore_timing = bool(cfg.get("ignore_timing"))
     try:
         shared.deps.log_event(
             "exam.public_invite.enable" if payload.enabled else "exam.public_invite.disable",
             actor="admin",
             quiz_key=str(quiz_key or "").strip(),
-            meta={"public_token": public_token},
+            meta={
+                "public_token": public_token,
+                "material_mode": material_mode,
+                "ignore_timing": ignore_timing,
+            },
         )
     except Exception:
         pass
@@ -168,6 +179,8 @@ def toggle_exam_public_invite(quiz_key: str, payload: shared.PublicInviteToggleP
         "ok": True,
         "enabled": bool(cfg.get("enabled")),
         "token": public_token,
+        "material_mode": material_mode,
+        "ignore_timing": ignore_timing,
         "public_url": (
             f"{shared._admin_base_url(request)}/p/{public_token}"
             if bool(cfg.get("enabled")) and public_token

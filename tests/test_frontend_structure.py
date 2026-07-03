@@ -27,6 +27,7 @@ def test_public_view_fragments_exist() -> None:
     names = _fragments_from_mapping(source, "public/views")
 
     assert names
+    assert "intake.html" in names
     for name in names:
         assert (ROOT / "static" / "public" / "views" / name).exists(), name
 
@@ -66,3 +67,14 @@ def test_admin_assignments_module_uses_page_query_param() -> None:
 
     assert 'query.set("page"' in source
     assert "scheduleAssignmentsReloadFromFirstPage" in source
+
+
+def test_admin_quiz_detail_public_invite_options_are_gated() -> None:
+    page_source = (ROOT / "static" / "admin" / "pages" / "quiz-detail.html").read_text(encoding="utf-8")
+    module_source = (ROOT / "static" / "admin" / "modules" / "pages" / "quizzes.js").read_text(encoding="utf-8")
+
+    assert 'x-show="quizDetail.quiz?.public_invite_enabled"' in page_source
+    assert 'role="radiogroup" aria-label="公开邀约资料采集"' in page_source
+    assert "setPublicInviteIgnoreTiming" in page_source
+    assert "public_invite_ignore_timing" in module_source
+    assert "ignore_timing: this.publicInviteIgnoreTiming()" in module_source

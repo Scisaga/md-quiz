@@ -53,6 +53,8 @@ class RepoRebindPayload(BaseModel):
 
 class PublicInviteTogglePayload(BaseModel):
     enabled: bool
+    material_mode: str | None = None
+    ignore_timing: bool | None = None
 
 
 class CandidateCreatePayload(BaseModel):
@@ -171,6 +173,16 @@ def _has_trait_options(options: list[dict[str, Any]]) -> bool:
     return any(isinstance((option or {}).get("traits"), dict) and (option or {}).get("traits") for option in options)
 
 
+def _resolve_question_scoring_mode(*questions: dict[str, Any] | None) -> str:
+    for question in questions:
+        if not isinstance(question, dict):
+            continue
+        mode = str(question.get("scoring_mode") or question.get("scoring") or "").strip().lower()
+        if mode:
+            return mode
+    return ""
+
+
 def _normalize_review_options(raw_options: Any, *, spec_question: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     current_options = [dict(option) for option in (raw_options or []) if isinstance(option, dict)]
     current_by_key = {str(option.get("key") or "").strip(): option for option in current_options if str(option.get("key") or "").strip()}
@@ -209,10 +221,15 @@ def _normalize_review_options(raw_options: Any, *, spec_question: dict[str, Any]
     return normalized
 
 
-def _review_question_kind(question_type: str, options: list[dict[str, Any]]) -> str:
+def _review_question_kind(question_type: str, options: list[dict[str, Any]], *, scoring_mode: str = "") -> str:
     qtype = str(question_type or "").strip().lower()
+    mode = str(scoring_mode or "").strip().lower()
     if qtype == "short":
         return "short"
+    if qtype in {"single", "multiple"} and mode == "completion":
+        return "completion"
+    if qtype in {"single", "multiple"} and mode == "traits":
+        return "traits"
     if qtype in {"single", "multiple"} and _has_trait_options(options):
         return "traits"
     if qtype in {"single", "multiple"}:
@@ -229,7 +246,10 @@ def _build_review_answer_item(
     qid = str(raw_question.get("qid") or (spec_question or {}).get("qid") or "").strip()
     qtype = str(raw_question.get("type") or (spec_question or {}).get("type") or (public_question or {}).get("type") or "").strip()
     options = _normalize_review_options(raw_question.get("options"), spec_question=spec_question)
-    review_kind = _review_question_kind(qtype, options)
+    scoring_mode = _resolve_question_scoring_mode(raw_question, spec_question, public_question)
+    if not scoring_mode and qtype in {"single", "multiple"} and _has_trait_options(options):
+        scoring_mode = "traits"
+    review_kind = _review_question_kind(qtype, options, scoring_mode=scoring_mode)
     score = _coerce_int_or_none(raw_question.get("score"))
     max_points = _coerce_int_or_none(
         raw_question.get("max_points")
@@ -261,11 +281,15 @@ def _build_review_answer_item(
     rubric_html = str(raw_question.get("rubric_html") or "").strip() or str(display_question.get("rubric_html") or "")
     answer = raw_question.get("answer")
     selected_options = _normalize_answer_keys(answer) if qtype in {"single", "multiple"} else []
-    correct_options = [
-        str(option.get("key") or "").strip()
-        for option in options
-        if bool(option.get("correct")) and str(option.get("key") or "").strip()
-    ]
+    correct_options = (
+        []
+        if review_kind == "completion"
+        else [
+            str(option.get("key") or "").strip()
+            for option in options
+            if bool(option.get("correct")) and str(option.get("key") or "").strip()
+        ]
+    )
     has_answer = bool(str(answer or "").strip()) if qtype == "short" else bool(selected_options)
     is_correct: bool | None = None
     is_partial = False
@@ -277,6 +301,7 @@ def _build_review_answer_item(
         "qid": qid,
         "label": raw_question.get("label") or (spec_question or {}).get("label") or (public_question or {}).get("label") or qid,
         "type": qtype,
+        "scoring_mode": scoring_mode,
         "review_kind": review_kind,
         "is_trait_question": review_kind == "traits",
         "max_points": max_points,
@@ -380,6 +405,7 @@ def _build_review_answers(
             "qid": qid,
             "label": spec_question.get("label") or qid,
             "type": spec_question.get("type"),
+            "scoring_mode": spec_question.get("scoring_mode"),
             "max_points": spec_question.get("max_points") or spec_question.get("points"),
             "stem_md": (public_by_qid.get(qid) or {}).get("stem_md") or spec_question.get("stem_md"),
             "options": spec_question.get("options"),
@@ -526,6 +552,7 @@ def _serialize_exam_summary(exam: dict[str, Any], request: Request) -> dict[str,
     quiz_key = str(exam.get("quiz_key") or "").strip()
     cfg = exam_helpers.get_public_invite_config(quiz_key)
     public_token = str(cfg.get("token") or "").strip()
+    public_material_mode = exam_helpers.normalize_public_invite_material_mode(cfg.get("material_mode"))
     question_count = int(exam.get("question_count") or exam.get("count") or 0)
     question_counts = exam.get("question_counts") if isinstance(exam.get("question_counts"), dict) else {}
     tags = exam.get("tags") if isinstance(exam.get("tags"), list) else []
@@ -550,6 +577,8 @@ def _serialize_exam_summary(exam: dict[str, Any], request: Request) -> dict[str,
         "updated_at": _iso_or_empty(exam.get("updated_at")),
         "public_invite_enabled": bool(cfg.get("enabled")),
         "public_invite_token": public_token,
+        "public_invite_material_mode": public_material_mode,
+        "public_invite_ignore_timing": bool(cfg.get("ignore_timing")),
         "public_invite_url": (
             f"{_admin_base_url(request)}/p/{public_token}"
             if bool(cfg.get("enabled")) and public_token
@@ -582,6 +611,7 @@ def _serialize_exam_detail(
     stats = _compute_exam_stats(spec if isinstance(spec, dict) else {})
     cfg = exam_helpers.get_public_invite_config(quiz_key)
     public_token = str(cfg.get("token") or "").strip()
+    public_material_mode = exam_helpers.normalize_public_invite_material_mode(cfg.get("material_mode"))
     versions: list[dict[str, Any]] = []
     for item in deps.list_quiz_versions(quiz_key):
         version_id = int(item.get("id") or 0)
@@ -617,6 +647,8 @@ def _serialize_exam_detail(
             "last_sync_error": str(exam.get("last_sync_error") or "").strip(),
             "public_invite_enabled": bool(cfg.get("enabled")),
             "public_invite_token": public_token,
+            "public_invite_material_mode": public_material_mode,
+            "public_invite_ignore_timing": bool(cfg.get("ignore_timing")),
             "public_invite_url": (
                 f"{_admin_base_url(request)}/p/{public_token}"
                 if bool(cfg.get("enabled")) and public_token
@@ -862,6 +894,10 @@ def _serialize_candidate_detail(candidate_id: int, candidate: dict[str, Any]) ->
             "resume_mime": str(candidate.get("resume_mime") or "").strip(),
             "resume_size": candidate.get("resume_size"),
             "resume_parsed_at": _iso_or_empty(candidate.get("resume_parsed_at")),
+            "business_card_filename": str(candidate.get("business_card_filename") or "").strip(),
+            "business_card_mime": str(candidate.get("business_card_mime") or "").strip(),
+            "business_card_size": candidate.get("business_card_size"),
+            "business_card_uploaded_at": _iso_or_empty(candidate.get("business_card_uploaded_at")),
         },
         "profile": {
             "gender": str(details_data.get("gender") or "").strip(),

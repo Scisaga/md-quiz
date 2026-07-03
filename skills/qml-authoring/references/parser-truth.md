@@ -26,7 +26,7 @@
   - 属性块写在 `{...}`
 - 若 `label` 不符合 `Q...`，parser 会自动生成 `Q1/Q2/...`
 - 重复 QID 会报 `Duplicate QID`
-- 题头属性可包含自定义键值；当前文档显式约定了 `scoring=traits` 这一语义
+- 题头属性可包含自定义键值；当前文档显式约定了 `scoring=traits` 和 `scoring=completion` 语义
 
 ### answer_time
 
@@ -42,6 +42,11 @@
   - 不得出现 `*`
   - 得分来自选项上的 `traits`
   - 仍然只能选择一个选项
+- 当 `single` / `multiple` 的题头属性包含 `scoring=completion` 时，该题表示作答计分题：
+  - 不需要正确答案
+  - 不得出现 `*`
+  - 不得出现选项级 `traits`
+  - 单选选择任一合法选项即得满分，多选选择至少一个合法选项即得满分
 - `multiple` 至少一个正确答案
 - 选项尾部可带属性块
 - `traits` 的约定格式为 `KEY:INT[,KEY:INT...]`

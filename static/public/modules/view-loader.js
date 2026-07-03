@@ -3,7 +3,8 @@ import { clearFragmentMount, loadHtmlFragment, queueMathTypeset } from "/static/
 export const PUBLIC_VIEW_FRAGMENTS = {
   unavailable: "/static/public/views/unavailable.html",
   start: "/static/public/views/start.html",
-  resume: "/static/public/views/resume.html",
+  resume: "/static/public/views/intake.html",
+  intake: "/static/public/views/intake.html",
   question: "/static/public/views/question.html",
   done: "/static/public/views/done.html",
 };

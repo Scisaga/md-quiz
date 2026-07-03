@@ -276,7 +276,13 @@ def _build_verify_payload(assignment: dict[str, Any], *, verify: dict[str, Any],
     }
 
 
-def _build_resume_payload(assignment: dict[str, Any], *, pending_profile: dict[str, Any], sms: dict[str, Any]) -> dict[str, Any]:
+def _assignment_material_mode(assignment: dict[str, Any]) -> str:
+    public_invite = assignment.get("public_invite") if isinstance(assignment.get("public_invite"), dict) else {}
+    return exam_helpers.normalize_public_invite_material_mode((public_invite or {}).get("material_mode"))
+
+
+def _build_intake_payload(assignment: dict[str, Any], *, pending_profile: dict[str, Any], sms: dict[str, Any]) -> dict[str, Any]:
+    material_mode = _assignment_material_mode(assignment)
     pending_existing = assignment.get("pending_existing_candidate") or {}
     if not isinstance(pending_existing, dict):
         pending_existing = {}
@@ -289,6 +295,11 @@ def _build_resume_payload(assignment: dict[str, Any], *, pending_profile: dict[s
         "parsed_at": str(pending_existing.get("resume_parsed_at") or "").strip(),
         "size": max(0, int(pending_existing.get("resume_size") or 0)),
     }
+    existing_business_card = {
+        "filename": str(pending_existing.get("business_card_filename") or "").strip(),
+        "uploaded_at": str(pending_existing.get("business_card_uploaded_at") or "").strip(),
+        "size": max(0, int(pending_existing.get("business_card_size") or 0)),
+    }
     has_existing_resume = bool(
         existing_candidate_id > 0
         and (
@@ -297,14 +308,31 @@ def _build_resume_payload(assignment: dict[str, Any], *, pending_profile: dict[s
             or existing_resume["parsed_at"]
         )
     )
+    has_existing_business_card = bool(
+        existing_candidate_id > 0
+        and (
+            existing_business_card["filename"]
+            or int(existing_business_card["size"] or 0) > 0
+            or existing_business_card["uploaded_at"]
+        )
+    )
+    existing_material = existing_resume if material_mode == "resume" else existing_business_card
+    has_existing_material = has_existing_resume if material_mode == "resume" else has_existing_business_card
     return {
         "name": str(pending_profile.get("name") or "候选人").strip() or "候选人",
         "phone": validation_helpers._normalize_phone(
             str(pending_profile.get("phone") or sms.get("phone") or "").strip()
         ),
-        "mode": ("reuse_or_replace" if has_existing_resume else "upload_required"),
+        "material_mode": material_mode,
+        "mode": ("reuse_or_replace" if has_existing_material else "upload_required"),
+        "existing_material": existing_material,
         "existing_resume": existing_resume,
+        "existing_business_card": existing_business_card,
     }
+
+
+def _build_resume_payload(assignment: dict[str, Any], *, pending_profile: dict[str, Any], sms: dict[str, Any]) -> dict[str, Any]:
+    return _build_intake_payload(assignment, pending_profile=pending_profile, sms=sms)
 
 
 def _build_quiz_payload(assignment: dict[str, Any], public_spec: dict[str, Any], quiz_metadata: dict[str, Any]) -> dict[str, Any]:
@@ -606,15 +634,19 @@ def _bootstrap_attempt(token: str, *, session_id: str = "") -> dict[str, Any]:
             "verify": _build_verify_payload(assignment, verify=verify, sms=sms, pending_profile=pending_profile, candidate_id=candidate_id),
         }
 
-    if status_text == "resume_pending" or candidate_id <= 0:
-        return {
+    if status_text in {"resume_pending", "intake_pending"} or candidate_id <= 0:
+        intake_payload = _build_intake_payload(assignment, pending_profile=pending_profile, sms=sms)
+        step_name = "resume" if intake_payload.get("material_mode") == "resume" else "intake"
+        payload = {
             "token": token,
-            "step": "resume",
+            "step": step_name,
             "assignment": _serialize_assignment_payload(assignment),
             "invite_window": _invite_window_payload(start_date, end_date),
             "quiz": _build_quiz_preview(assignment),
-            "resume": _build_resume_payload(assignment, pending_profile=pending_profile, sms=sms),
+            "intake": intake_payload,
+            "resume": intake_payload,
         }
+        return payload
 
     public_spec, quiz_metadata = _load_public_quiz_bundle(assignment)
     questions = list(public_spec.get("questions") or [])
@@ -801,6 +833,17 @@ def public_resume_upload(request: Request, token: str = "", file: UploadFile = F
 @router.post("/resume/use-existing")
 def public_resume_use_existing(payload: UseExistingResumePayload):
     return public_flow_service.use_existing_public_resume(token=payload.token)
+
+
+@router.post("/intake/upload")
+def public_intake_upload(request: Request, token: str = "", file: UploadFile = File(...)):
+    _ = request
+    return public_flow_service.upload_public_intake(token=token, file=file)
+
+
+@router.post("/intake/use-existing")
+def public_intake_use_existing(payload: UseExistingResumePayload):
+    return public_flow_service.use_existing_public_intake(token=payload.token)
 
 
 @router.post("/answers/{token}")

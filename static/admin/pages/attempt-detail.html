@@ -100,7 +100,7 @@
                                 </div>
                               </div>
                               <div class="ml-auto flex shrink-0 flex-wrap justify-end gap-1.5 pl-2">
-                                <span x-show="attemptReviewOptionIsCorrect(question, option)" class="shrink-0 rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-700">正确答案</span>
+                                <span x-show="attemptReviewIsObjectiveQuestion(question) && attemptReviewOptionIsCorrect(question, option)" class="shrink-0 rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-700">正确答案</span>
                                 <span
                                   x-show="attemptReviewOptionIsSelected(question, option)"
                                   :class="attemptReviewOptionSelectionBadgeClass(question, option)"

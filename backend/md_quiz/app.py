@@ -153,6 +153,7 @@ def create_app() -> FastAPI:
 
     @app.get("/p/{token:path}", include_in_schema=False)
     @app.get("/t/{token:path}", include_in_schema=False)
+    @app.get("/intake/{token:path}", include_in_schema=False)
     @app.get("/resume/{token:path}", include_in_schema=False)
     @app.get("/quiz/{token:path}", include_in_schema=False)
     @app.get("/exam/{token:path}", include_in_schema=False)

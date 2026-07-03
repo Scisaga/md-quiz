@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,6 +16,16 @@ from backend.md_quiz.storage import JobStore
 _SMS_COOLDOWN_SECONDS = 60
 _SMS_SEND_MAX = 3
 _SMS_VERIFY_CODE_LENGTH = 4
+_BUSINESS_CARD_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+
+
+def _material_mode(value: Any) -> str:
+    return exam_helpers.normalize_public_invite_material_mode(value)
+
+
+def _assignment_material_mode(assignment: dict[str, Any]) -> str:
+    public_invite = assignment.get("public_invite") if isinstance(assignment.get("public_invite"), dict) else {}
+    return _material_mode((public_invite or {}).get("material_mode"))
 
 
 def _iso_text(value: Any) -> str:
@@ -56,23 +67,88 @@ def _candidate_has_resume(candidate_id: int) -> bool:
     return bool(meta["filename"] or int(meta["size"] or 0) > 0 or meta["parsed_at"])
 
 
+def _candidate_business_card_meta(candidate_id: int) -> dict[str, Any]:
+    candidate = deps.get_candidate(int(candidate_id)) or {}
+    try:
+        size = int(candidate.get("business_card_size") or 0)
+    except Exception:
+        size = 0
+    filename = str(candidate.get("business_card_filename") or "").strip()
+    uploaded_at = _iso_text(candidate.get("business_card_uploaded_at"))
+    if not filename and size <= 0 and not uploaded_at:
+        business_card = deps.get_candidate_business_card(int(candidate_id)) or {}
+        filename = str(business_card.get("business_card_filename") or "").strip()
+        uploaded_at = _iso_text(business_card.get("business_card_uploaded_at"))
+        try:
+            size = int(business_card.get("business_card_size") or 0)
+        except Exception:
+            size = 0
+        if size <= 0:
+            card_bytes = business_card.get("business_card_bytes")
+            if isinstance(card_bytes, (bytes, bytearray)):
+                size = len(card_bytes)
+    return {
+        "filename": filename,
+        "uploaded_at": uploaded_at,
+        "size": max(0, int(size or 0)),
+    }
+
+
+def _candidate_has_business_card(candidate_id: int) -> bool:
+    meta = _candidate_business_card_meta(candidate_id)
+    return bool(meta["filename"] or int(meta["size"] or 0) > 0 or meta["uploaded_at"])
+
+
 def _set_pending_existing_candidate(
     assignment: dict[str, Any],
     *,
     candidate_id: int,
     name: str,
     phone: str,
+    material_mode: str = "resume",
 ) -> dict[str, Any]:
-    meta = _candidate_resume_meta(candidate_id)
+    resume_meta = _candidate_resume_meta(candidate_id)
+    card_meta = _candidate_business_card_meta(candidate_id)
     assignment["pending_existing_candidate"] = {
         "candidate_id": int(candidate_id),
         "name": str(name or "").strip(),
         "phone": validation_helpers._normalize_phone(str(phone or "").strip()),
-        "resume_filename": str(meta.get("filename") or "").strip(),
-        "resume_size": int(meta.get("size") or 0),
-        "resume_parsed_at": str(meta.get("parsed_at") or "").strip(),
+        "material_mode": _material_mode(material_mode),
+        "resume_filename": str(resume_meta.get("filename") or "").strip(),
+        "resume_size": int(resume_meta.get("size") or 0),
+        "resume_parsed_at": str(resume_meta.get("parsed_at") or "").strip(),
+        "business_card_filename": str(card_meta.get("filename") or "").strip(),
+        "business_card_size": int(card_meta.get("size") or 0),
+        "business_card_uploaded_at": str(card_meta.get("uploaded_at") or "").strip(),
     }
-    return meta
+    return resume_meta if _material_mode(material_mode) == "resume" else card_meta
+
+
+def _ensure_public_candidate(*, name: str, phone: str) -> tuple[int, bool]:
+    candidate = deps.get_candidate_by_phone(phone)
+    if candidate and int(candidate.get("id") or 0) > 0:
+        return int(candidate.get("id") or 0), False
+    try:
+        return int(deps.create_candidate(name=name, phone=phone)), True
+    except Exception:
+        candidate_retry = deps.get_candidate_by_phone(phone)
+        candidate_id = int((candidate_retry or {}).get("id") or 0)
+        return candidate_id, False
+
+
+def _read_business_card_bytes(file: UploadFile) -> bytes:
+    if not file or not getattr(file, "filename", ""):
+        raise HTTPException(status_code=400, detail="请选择名片图片")
+    try:
+        data = file.file.read() or b""
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="名片图片读取失败") from exc
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="名片图片过大，需小于等于 10MB")
+    ext = os.path.splitext(str(file.filename or ""))[1].lower()
+    if ext not in _BUSINESS_CARD_EXTS:
+        raise HTTPException(status_code=400, detail="仅支持图片格式名片")
+    return data
 
 
 def _finalize_assignment_candidate_binding(
@@ -130,13 +206,19 @@ def ensure_public_invite(public_token: str, request: Request) -> JSONResponse:
     cfg = exam_helpers.get_public_invite_config(quiz_key)
     if not bool(cfg.get("enabled")) or str(cfg.get("token") or "").strip() != token_value:
         raise HTTPException(status_code=410, detail="当前公开邀约链接已关闭或无效")
+    material_mode = _material_mode(cfg.get("material_mode"))
+    ignore_timing = bool(cfg.get("ignore_timing"))
 
     quiz = deps.get_quiz_definition(quiz_key)
     quiz_version_id = exam_helpers.resolve_quiz_version_id_for_new_assignment(quiz_key)
     if not quiz or not quiz_version_id:
         raise HTTPException(status_code=404, detail="测验不存在")
-    time_limit_seconds = exam_helpers.compute_quiz_time_limit_seconds(
-        (quiz.get("public_spec") if isinstance(quiz.get("public_spec"), dict) else {}) or {}
+    time_limit_seconds = (
+        0
+        if ignore_timing
+        else exam_helpers.compute_quiz_time_limit_seconds(
+            (quiz.get("public_spec") if isinstance(quiz.get("public_spec"), dict) else {}) or {}
+        )
     )
 
     cookie_name = f"public_invite_{token_value}"
@@ -163,6 +245,7 @@ def ensure_public_invite(public_token: str, request: Request) -> JSONResponse:
         time_limit_seconds=time_limit_seconds,
         min_submit_seconds=0,
         require_phone_verification=True,
+        ignore_timing=ignore_timing,
         verify_max_attempts=3,
     )
     token = str(result.get("token") or "").strip()
@@ -176,6 +259,8 @@ def ensure_public_invite(public_token: str, request: Request) -> JSONResponse:
                 "token": token_value,
                 "quiz_key": quiz_key,
                 "quiz_version_id": quiz_version_id,
+                "material_mode": material_mode,
+                "ignore_timing": ignore_timing,
             }
             deps.save_assignment(token, assignment)
     except Exception:
@@ -325,6 +410,7 @@ def verify_assignment(*, token: str, name: str = "", phone: str = "", sms_code: 
     log_quiz_key = ""
     log_public_invite = False
     log_sms_send_count = 0
+    log_candidate_created = False
     redirect_to = ""
 
     with deps.assignment_locked(token):
@@ -432,24 +518,43 @@ def verify_assignment(*, token: str, name: str = "", phone: str = "", sms_code: 
 
             now = datetime.now(timezone.utc).isoformat()
             if mode == "public_identity":
-                assignment["candidate_id"] = 0
+                material_mode = _assignment_material_mode(assignment)
                 assignment["pending_profile"] = {
                     "name": name,
                     "phone": phone,
                     "sms_verified_at": str((assignment.get("sms_verify") or {}).get("verified_at") or ""),
                 }
-                assignment["status"] = "resume_pending"
-                assignment["status_updated_at"] = now
                 if matched_candidate_id > 0:
                     _set_pending_existing_candidate(
                         assignment,
                         candidate_id=matched_candidate_id,
                         name=name,
                         phone=phone,
+                        material_mode=material_mode,
                     )
                 else:
                     assignment.pop("pending_existing_candidate", None)
-                redirect_to = f"/resume/{token}"
+                if material_mode == "none":
+                    candidate_id_to_bind = matched_candidate_id
+                    created_candidate = False
+                    if candidate_id_to_bind <= 0:
+                        candidate_id_to_bind, created_candidate = _ensure_public_candidate(name=name, phone=phone)
+                    if candidate_id_to_bind <= 0:
+                        raise HTTPException(status_code=500, detail="创建候选人失败，请稍后重试")
+                    _finalize_assignment_candidate_binding(
+                        token=token,
+                        assignment=assignment,
+                        candidate_id=int(candidate_id_to_bind),
+                        phone=phone,
+                    )
+                    matched_candidate_id = int(candidate_id_to_bind)
+                    log_candidate_created = bool(created_candidate)
+                    redirect_to = f"/quiz/{token}"
+                else:
+                    assignment["candidate_id"] = 0
+                    assignment["status"] = "intake_pending"
+                    assignment["status_updated_at"] = now
+                    redirect_to = f"/resume/{token}" if material_mode == "resume" else f"/intake/{token}"
             else:
                 if candidate_id <= 0:
                     raise HTTPException(status_code=400, detail="候选人信息不完整，请联系管理员")
@@ -497,18 +602,27 @@ def verify_assignment(*, token: str, name: str = "", phone: str = "", sms_code: 
                 "sms_send_count": int(log_sms_send_count or 0),
             },
         )
+        if log_candidate_created and int(log_candidate_id or 0) > 0:
+            deps.log_event(
+                "candidate.create",
+                actor="candidate",
+                candidate_id=int(log_candidate_id),
+                meta={"name": name, "phone": phone, "public_invite": True},
+            )
     except Exception:
         pass
     return {"ok": True, "redirect": redirect_to or f"/quiz/{token}"}
 
 
-def upload_public_resume(*, token: str, file: UploadFile) -> dict[str, Any]:
+def upload_public_intake(
+    *,
+    token: str,
+    file: UploadFile,
+    material_mode: str | None = None,
+) -> dict[str, Any]:
     token = str(token or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="缺少 token")
-    data = resume_ingest_service.read_resume_bytes(file)
-    filename = str(file.filename or "")
-    mime = str(file.content_type or "")
 
     with deps.assignment_locked(token):
         assignment = deps.load_assignment(token)
@@ -520,6 +634,14 @@ def upload_public_resume(*, token: str, file: UploadFile) -> dict[str, Any]:
         sms = assignment.get("sms_verify") or {}
         if not bool(sms.get("verified")):
             raise HTTPException(status_code=400, detail="请先完成验证码验证")
+        snapshot_material_mode = _assignment_material_mode(assignment)
+        requested_material_mode = _material_mode(material_mode) if material_mode else snapshot_material_mode
+        if requested_material_mode != snapshot_material_mode:
+            detail = "当前公开邀约要求上传名片" if snapshot_material_mode == "business_card" else "当前公开邀约要求上传简历"
+            raise HTTPException(status_code=400, detail=detail)
+        current_material_mode = requested_material_mode
+        if current_material_mode == "none":
+            raise HTTPException(status_code=400, detail="当前公开邀约无需上传资料")
 
         try:
             existing_candidate_id = int(assignment.get("candidate_id") or 0)
@@ -536,54 +658,59 @@ def upload_public_resume(*, token: str, file: UploadFile) -> dict[str, Any]:
     if not validation_helpers._is_valid_name(name) or not validation_helpers._is_valid_phone(phone):
         raise HTTPException(status_code=400, detail="候选人信息不完整，请重新验证")
 
-    candidate = deps.get_candidate_by_phone(phone)
-    created = False
-    if candidate and int(candidate.get("id") or 0) > 0:
-        candidate_id = int(candidate.get("id") or 0)
+    filename = str(file.filename or "")
+    mime = str(file.content_type or "")
+    if current_material_mode == "resume":
+        data = resume_ingest_service.read_resume_bytes(file)
     else:
-        try:
-            candidate_id = int(deps.create_candidate(name=name, phone=phone))
-            created = True
-        except Exception:
-            candidate_retry = deps.get_candidate_by_phone(phone)
-            candidate_id = int((candidate_retry or {}).get("id") or 0)
+        data = _read_business_card_bytes(file)
+
+    candidate_id, created = _ensure_public_candidate(name=name, phone=phone)
     if candidate_id <= 0:
         raise HTTPException(status_code=500, detail="创建候选人失败，请稍后重试")
 
-    pending_resume_parsed = {
-        "extracted": {"name": name, "phone": phone},
-        "confidence": {"name": 0, "phone": 100},
-        "source_filename": filename,
-        "source_mime": mime,
-        "method": {"identity": "pending", "name": "pending", "details": "pending"},
-        "details": {
-            "status": "pending",
-            "data": {},
-            "parsed_at": datetime.now(timezone.utc).isoformat(),
-        },
-    }
-    deps.update_candidate_resume(
-        candidate_id,
-        resume_bytes=data,
-        resume_filename=filename,
-        resume_mime=mime,
-        resume_size=len(data),
-        resume_parsed=pending_resume_parsed,
-    )
-
-    try:
-        JobStore().enqueue(
-            "resume_parse",
-            payload={
-                "candidate_id": int(candidate_id),
-                "expected_phone": phone,
-                "token": token,
-                "quiz_key": quiz_key,
+    if current_material_mode == "resume":
+        pending_resume_parsed = {
+            "extracted": {"name": name, "phone": phone},
+            "confidence": {"name": 0, "phone": 100},
+            "source_filename": filename,
+            "source_mime": mime,
+            "method": {"identity": "pending", "name": "pending", "details": "pending"},
+            "details": {
+                "status": "pending",
+                "data": {},
+                "parsed_at": datetime.now(timezone.utc).isoformat(),
             },
-            source="public_resume_upload",
+        }
+        deps.update_candidate_resume(
+            candidate_id,
+            resume_bytes=data,
+            resume_filename=filename,
+            resume_mime=mime,
+            resume_size=len(data),
+            resume_parsed=pending_resume_parsed,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="简历解析任务创建失败，请稍后重试") from exc
+        try:
+            JobStore().enqueue(
+                "resume_parse",
+                payload={
+                    "candidate_id": int(candidate_id),
+                    "expected_phone": phone,
+                    "token": token,
+                    "quiz_key": quiz_key,
+                },
+                source="public_resume_upload",
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="简历解析任务创建失败，请稍后重试") from exc
+    else:
+        deps.update_candidate_business_card(
+            candidate_id,
+            business_card_bytes=data,
+            business_card_filename=filename,
+            business_card_mime=mime,
+            business_card_size=len(data),
+        )
 
     with deps.assignment_locked(token):
         assignment = deps.load_assignment(token)
@@ -611,7 +738,11 @@ def upload_public_resume(*, token: str, file: UploadFile) -> dict[str, Any]:
     return {"ok": True, "redirect": f"/quiz/{token}"}
 
 
-def use_existing_public_resume(*, token: str) -> dict[str, Any]:
+def upload_public_resume(*, token: str, file: UploadFile) -> dict[str, Any]:
+    return upload_public_intake(token=token, file=file, material_mode="resume")
+
+
+def use_existing_public_intake(*, token: str, material_mode: str | None = None) -> dict[str, Any]:
     token = str(token or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="缺少 token")
@@ -626,6 +757,14 @@ def use_existing_public_resume(*, token: str) -> dict[str, Any]:
         sms = assignment.get("sms_verify") or {}
         if not bool(sms.get("verified")):
             raise HTTPException(status_code=400, detail="请先完成验证码验证")
+        snapshot_material_mode = _assignment_material_mode(assignment)
+        requested_material_mode = _material_mode(material_mode) if material_mode else snapshot_material_mode
+        if requested_material_mode != snapshot_material_mode:
+            detail = "当前公开邀约要求复用名片" if snapshot_material_mode == "business_card" else "当前公开邀约要求复用简历"
+            raise HTTPException(status_code=400, detail=detail)
+        current_material_mode = requested_material_mode
+        if current_material_mode == "none":
+            raise HTTPException(status_code=400, detail="当前公开邀约无需复用资料")
 
         try:
             existing_candidate_id = int(assignment.get("candidate_id") or 0)
@@ -646,7 +785,8 @@ def use_existing_public_resume(*, token: str) -> dict[str, Any]:
         except Exception:
             candidate_id = 0
         if candidate_id <= 0:
-            raise HTTPException(status_code=400, detail="当前没有可复用的简历，请上传最新版简历")
+            detail = "当前没有可复用的名片，请上传名片照片" if current_material_mode == "business_card" else "当前没有可复用的简历，请上传最新版简历"
+            raise HTTPException(status_code=400, detail=detail)
 
         name = str(pending_profile.get("name") or "").strip()
         phone = validation_helpers._normalize_phone(
@@ -657,7 +797,10 @@ def use_existing_public_resume(*, token: str) -> dict[str, Any]:
         candidate_phone = validation_helpers._normalize_phone(str(candidate.get("phone") or "").strip())
         if not name or not phone or candidate_name != name or candidate_phone != phone:
             raise HTTPException(status_code=400, detail="候选人信息已变更，请重新验证后再试")
-        if not _candidate_has_resume(candidate_id):
+        if current_material_mode == "business_card":
+            if not _candidate_has_business_card(candidate_id):
+                raise HTTPException(status_code=400, detail="未找到可复用的名片，请上传名片照片")
+        elif not _candidate_has_resume(candidate_id):
             raise HTTPException(status_code=400, detail="未找到可复用的简历，请上传最新版简历")
 
         _finalize_assignment_candidate_binding(
@@ -668,3 +811,7 @@ def use_existing_public_resume(*, token: str) -> dict[str, Any]:
         )
 
     return {"ok": True, "redirect": f"/quiz/{token}"}
+
+
+def use_existing_public_resume(*, token: str) -> dict[str, Any]:
+    return use_existing_public_intake(token=token, material_mode="resume")

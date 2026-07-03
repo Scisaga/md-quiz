@@ -381,19 +381,24 @@ BEGIN
   END IF;
 END$$;
 
- CREATE TABLE IF NOT EXISTS candidate (
-   id               BIGSERIAL PRIMARY KEY,
-    name             TEXT NOT NULL,
-    phone            TEXT NOT NULL,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at       TIMESTAMPTZ NULL,
-   resume_bytes     BYTEA NULL,
-   resume_filename  TEXT NULL,
-   resume_mime      TEXT NULL,
-   resume_size      INT NULL,
-   resume_parsed    JSONB NULL,
-  resume_parsed_at TIMESTAMPTZ NULL
- );
+CREATE TABLE IF NOT EXISTS candidate (
+  id               BIGSERIAL PRIMARY KEY,
+  name             TEXT NOT NULL,
+  phone            TEXT NOT NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at       TIMESTAMPTZ NULL,
+  resume_bytes     BYTEA NULL,
+  resume_filename  TEXT NULL,
+  resume_mime      TEXT NULL,
+  resume_size      INT NULL,
+  resume_parsed    JSONB NULL,
+  resume_parsed_at TIMESTAMPTZ NULL,
+  business_card_bytes       BYTEA NULL,
+  business_card_filename    TEXT NULL,
+  business_card_mime        TEXT NULL,
+  business_card_size        INT NULL,
+  business_card_uploaded_at TIMESTAMPTZ NULL
+);
 
  DO $$
  BEGIN
@@ -424,12 +429,17 @@ ALTER TABLE candidate DROP COLUMN IF EXISTS score;
 ALTER TABLE candidate DROP COLUMN IF EXISTS exam_started_at;
 ALTER TABLE candidate DROP COLUMN IF EXISTS exam_submitted_at;
 ALTER TABLE candidate DROP COLUMN IF EXISTS duration_seconds;
- ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_bytes BYTEA NULL;
- ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_filename TEXT NULL;
- ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_mime TEXT NULL;
- ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_size INT NULL;
- ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_parsed JSONB NULL;
- ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_parsed_at TIMESTAMPTZ NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_bytes BYTEA NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_filename TEXT NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_mime TEXT NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_size INT NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_parsed JSONB NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS resume_parsed_at TIMESTAMPTZ NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS business_card_bytes BYTEA NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS business_card_filename TEXT NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS business_card_mime TEXT NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS business_card_size INT NULL;
+ALTER TABLE candidate ADD COLUMN IF NOT EXISTS business_card_uploaded_at TIMESTAMPTZ NULL;
 
   -- Drop deprecated columns (we no longer use them).
   ALTER TABLE candidate DROP COLUMN IF EXISTS interview;
@@ -680,6 +690,8 @@ ALTER TABLE candidate DROP COLUMN IF EXISTS duration_seconds;
     public_spec JSONB NOT NULL,
     public_invite_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     public_invite_token TEXT NULL,
+    public_invite_material_mode TEXT NOT NULL DEFAULT 'resume',
+    public_invite_ignore_timing BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
@@ -703,6 +715,24 @@ ALTER TABLE candidate DROP COLUMN IF EXISTS duration_seconds;
   ALTER TABLE quiz_definition ADD COLUMN IF NOT EXISTS last_synced_commit TEXT NULL;
   ALTER TABLE quiz_definition ADD COLUMN IF NOT EXISTS last_sync_error TEXT NULL;
   ALTER TABLE quiz_definition ADD COLUMN IF NOT EXISTS last_sync_at TIMESTAMPTZ NULL;
+  ALTER TABLE quiz_definition ADD COLUMN IF NOT EXISTS public_invite_material_mode TEXT NOT NULL DEFAULT 'resume';
+  ALTER TABLE quiz_definition ADD COLUMN IF NOT EXISTS public_invite_ignore_timing BOOLEAN NOT NULL DEFAULT FALSE;
+  UPDATE quiz_definition
+     SET public_invite_material_mode='resume'
+   WHERE COALESCE(NULLIF(BTRIM(public_invite_material_mode), ''), 'resume') NOT IN ('none', 'resume', 'business_card');
+  DO $$
+  BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'quiz_definition_public_invite_material_mode_check'
+    ) THEN
+      BEGIN
+        ALTER TABLE quiz_definition
+          ADD CONSTRAINT quiz_definition_public_invite_material_mode_check
+          CHECK (public_invite_material_mode IN ('none', 'resume', 'business_card'));
+      EXCEPTION WHEN OTHERS THEN NULL;
+      END;
+    END IF;
+  END$$;
   CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_definition_public_invite_token
     ON quiz_definition(public_invite_token)
     WHERE public_invite_token IS NOT NULL;
@@ -974,7 +1004,8 @@ def create_candidate(name: str, phone: str) -> int:
 def get_candidate(candidate_id: int) -> dict[str, Any] | None:
     sql = """
  SELECT id, name, phone, created_at, deleted_at,
-        resume_filename, resume_mime, resume_size, resume_parsed, resume_parsed_at
+        resume_filename, resume_mime, resume_size, resume_parsed, resume_parsed_at,
+        business_card_filename, business_card_mime, business_card_size, business_card_uploaded_at
   FROM candidate
   WHERE id = %s
    """
@@ -1001,6 +1032,25 @@ def get_candidate_resume(candidate_id: int) -> dict[str, Any] | None:
             b = d.get("resume_bytes")
             if isinstance(b, memoryview):
                 d["resume_bytes"] = b.tobytes()
+            return d
+
+
+def get_candidate_business_card(candidate_id: int) -> dict[str, Any] | None:
+    sql = """
+ SELECT business_card_bytes, business_card_filename, business_card_mime, business_card_size, business_card_uploaded_at
+ FROM candidate
+ WHERE id=%s
+ """
+    with conn_scope() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, (int(candidate_id),))
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            b = d.get("business_card_bytes")
+            if isinstance(b, memoryview):
+                d["business_card_bytes"] = b.tobytes()
             return d
 
 
@@ -1039,6 +1089,38 @@ def update_candidate_resume(
                     (resume_mime or None),
                     (int(resume_size) if resume_size is not None else None),
                     parsed_param,
+                    int(candidate_id),
+                ),
+            )
+
+
+def update_candidate_business_card(
+    candidate_id: int,
+    *,
+    business_card_bytes: bytes,
+    business_card_filename: str | None = None,
+    business_card_mime: str | None = None,
+    business_card_size: int | None = None,
+) -> None:
+    sql = """
+ UPDATE candidate
+ SET
+   business_card_bytes=%s,
+   business_card_filename=%s,
+   business_card_mime=%s,
+   business_card_size=%s,
+   business_card_uploaded_at=NOW()
+ WHERE id=%s
+ """
+    with conn_scope() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (
+                    psycopg2.Binary(business_card_bytes),
+                    (business_card_filename or None),
+                    (business_card_mime or None),
+                    (int(business_card_size) if business_card_size is not None else len(business_card_bytes or b"")),
                     int(candidate_id),
                 ),
             )
@@ -1358,6 +1440,7 @@ INSERT INTO quiz_definition(
   git_repo_url,
   current_version_id,
   current_version_no,
+  public_invite_material_mode,
   last_synced_commit,
   last_sync_error,
   last_sync_at,
@@ -1375,6 +1458,7 @@ VALUES (
   %s,
   %s,
   COALESCE(%s, 0),
+  'resume',
   %s,
   %s,
   %s,
@@ -1392,6 +1476,7 @@ SET
   git_repo_url = COALESCE(EXCLUDED.git_repo_url, quiz_definition.git_repo_url),
   current_version_id = COALESCE(EXCLUDED.current_version_id, quiz_definition.current_version_id),
   current_version_no = COALESCE(NULLIF(EXCLUDED.current_version_no, 0), quiz_definition.current_version_no),
+  public_invite_material_mode = quiz_definition.public_invite_material_mode,
   last_synced_commit = COALESCE(EXCLUDED.last_synced_commit, quiz_definition.last_synced_commit),
   last_sync_error = EXCLUDED.last_sync_error,
   last_sync_at = COALESCE(EXCLUDED.last_sync_at, quiz_definition.last_sync_at),
@@ -1432,8 +1517,10 @@ SELECT
   git_repo_url,
   current_version_id,
   current_version_no,
+  public_invite_material_mode,
   public_invite_enabled,
   public_invite_token,
+  public_invite_ignore_timing,
   last_synced_commit,
   last_sync_error,
   last_sync_at,
@@ -1465,8 +1552,10 @@ SELECT
   git_repo_url,
   current_version_id,
   current_version_no,
+  public_invite_material_mode,
   public_invite_enabled,
   public_invite_token,
+  public_invite_ignore_timing,
   last_synced_commit,
   last_sync_error,
   last_sync_at,
@@ -1505,7 +1594,13 @@ def delete_quiz_definition(quiz_key: str) -> int:
 
 def get_exam_public_invite(quiz_key: str) -> dict[str, Any] | None:
     sql = """
-SELECT public_invite_enabled, public_invite_token, created_at, title
+SELECT
+  public_invite_enabled,
+  public_invite_token,
+  public_invite_material_mode,
+  public_invite_ignore_timing,
+  created_at,
+  title
 FROM quiz_definition
 WHERE quiz_key=%s
 """
@@ -1516,12 +1611,21 @@ WHERE quiz_key=%s
     return dict(row) if row else None
 
 
-def set_exam_public_invite(quiz_key: str, *, enabled: bool, token: str | None) -> int:
+def set_exam_public_invite(
+    quiz_key: str,
+    *,
+    enabled: bool,
+    token: str | None,
+    material_mode: str | None = None,
+    ignore_timing: bool | None = None,
+) -> int:
     sql = """
 UPDATE quiz_definition
 SET
   public_invite_enabled=%s,
   public_invite_token=%s,
+  public_invite_material_mode=COALESCE(%s, public_invite_material_mode),
+  public_invite_ignore_timing=COALESCE(%s, public_invite_ignore_timing),
   updated_at=NOW()
 WHERE quiz_key=%s
 """
@@ -1532,6 +1636,8 @@ WHERE quiz_key=%s
                 (
                     bool(enabled),
                     (str(token or "").strip() or None),
+                    (str(material_mode or "").strip() or None),
+                    (bool(ignore_timing) if ignore_timing is not None else None),
                     str(quiz_key or "").strip(),
                 ),
             )
@@ -2589,7 +2695,12 @@ def delete_candidate(candidate_id: int) -> None:
      resume_mime=NULL,
      resume_size=NULL,
      resume_parsed=NULL,
-     resume_parsed_at=NULL
+     resume_parsed_at=NULL,
+     business_card_bytes=NULL,
+     business_card_filename=NULL,
+     business_card_mime=NULL,
+     business_card_size=NULL,
+     business_card_uploaded_at=NULL
  WHERE id=%s
  """
     with conn_scope() as conn:
@@ -2887,16 +2998,16 @@ def list_quiz_papers(
         where.append("(c.name ILIKE %s OR ep.phone LIKE %s OR ep.quiz_key ILIKE %s OR ep.token ILIKE %s)")
         params.extend([ql, ql, ql, ql])
     if invite_start_from:
-        where.append("ep.invite_start_date >= %s::date")
+        where.append("COALESCE(ep.invite_start_date, ep.created_at::date) >= %s::date")
         params.append(str(invite_start_from).strip())
     if invite_start_to:
-        where.append("ep.invite_start_date <= %s::date")
+        where.append("COALESCE(ep.invite_start_date, ep.created_at::date) <= %s::date")
         params.append(str(invite_start_to).strip())
     if invite_end_from:
-        where.append("ep.invite_end_date >= %s::date")
+        where.append("COALESCE(ep.invite_end_date, ep.created_at::date) >= %s::date")
         params.append(str(invite_end_from).strip())
     if invite_end_to:
-        where.append("ep.invite_end_date <= %s::date")
+        where.append("COALESCE(ep.invite_end_date, ep.created_at::date) <= %s::date")
         params.append(str(invite_end_to).strip())
     if where:
         sql += " WHERE " + " AND ".join(where)
@@ -3885,16 +3996,16 @@ def count_quiz_papers(
         where.append("(c.name ILIKE %s OR ep.phone LIKE %s OR ep.quiz_key ILIKE %s OR ep.token ILIKE %s)")
         params.extend([ql, ql, ql, ql])
     if invite_start_from:
-        where.append("ep.invite_start_date >= %s::date")
+        where.append("COALESCE(ep.invite_start_date, ep.created_at::date) >= %s::date")
         params.append(str(invite_start_from).strip())
     if invite_start_to:
-        where.append("ep.invite_start_date <= %s::date")
+        where.append("COALESCE(ep.invite_start_date, ep.created_at::date) <= %s::date")
         params.append(str(invite_start_to).strip())
     if invite_end_from:
-        where.append("ep.invite_end_date >= %s::date")
+        where.append("COALESCE(ep.invite_end_date, ep.created_at::date) >= %s::date")
         params.append(str(invite_end_from).strip())
     if invite_end_to:
-        where.append("ep.invite_end_date <= %s::date")
+        where.append("COALESCE(ep.invite_end_date, ep.created_at::date) <= %s::date")
         params.append(str(invite_end_to).strip())
     if where:
         sql += " WHERE " + " AND ".join(where)
@@ -3925,16 +4036,16 @@ def count_unhandled_finished_quiz_papers(
         where.append("(c.name ILIKE %s OR ep.phone LIKE %s OR ep.quiz_key ILIKE %s OR ep.token ILIKE %s)")
         params.extend([ql, ql, ql, ql])
     if invite_start_from:
-        where.append("ep.invite_start_date >= %s::date")
+        where.append("COALESCE(ep.invite_start_date, ep.created_at::date) >= %s::date")
         params.append(str(invite_start_from).strip())
     if invite_start_to:
-        where.append("ep.invite_start_date <= %s::date")
+        where.append("COALESCE(ep.invite_start_date, ep.created_at::date) <= %s::date")
         params.append(str(invite_start_to).strip())
     if invite_end_from:
-        where.append("ep.invite_end_date >= %s::date")
+        where.append("COALESCE(ep.invite_end_date, ep.created_at::date) >= %s::date")
         params.append(str(invite_end_from).strip())
     if invite_end_to:
-        where.append("ep.invite_end_date <= %s::date")
+        where.append("COALESCE(ep.invite_end_date, ep.created_at::date) <= %s::date")
         params.append(str(invite_end_to).strip())
     sql += " WHERE " + " AND ".join(where)
     with conn_scope() as conn:

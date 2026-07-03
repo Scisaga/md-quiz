@@ -10,6 +10,15 @@ from backend.md_quiz.services.grading_traits import (
 from backend.md_quiz.services.llm_client import call_llm_text as _default_call_llm_text
 
 
+def _question_scoring_mode(question: dict[str, Any], detail: dict[str, Any] | None = None) -> str:
+    return str(
+        (detail or {}).get("scoring_mode")
+        or question.get("scoring_mode")
+        or question.get("scoring")
+        or ""
+    ).strip().lower()
+
+
 def _build_scored_summary_lines(spec: dict[str, Any], assignment: dict[str, Any], scored_result: dict[str, Any]) -> list[str]:
     answers = assignment.get("answers") or {}
     questions = spec.get("questions") or []
@@ -37,7 +46,8 @@ def _build_scored_summary_lines(spec: dict[str, Any], assignment: dict[str, Any]
             answer_text = "" if answer is None else str(answer)
         answer_text = answer_text.strip().replace("\n", " ")
         answer_text = answer_text[:120]
-        line = f"- {qid}（{qtype}）：{score}/{max_points}；题目={stem}"
+        mode_label = "，作答计分" if _question_scoring_mode(question, detail) == "completion" else ""
+        line = f"- {qid}（{qtype}{mode_label}）：{score}/{max_points}；题目={stem}"
         if answer_text:
             line += f"；作答={answer_text}"
         reason = str(detail.get("reason") or "").strip().replace("\n", " ")
@@ -95,6 +105,7 @@ def _generate_final_analysis(
         "2) 220-420 字。",
         "3) 不要输出招聘结论、通过/淘汰判断或下一轮建议。",
         "4) 不要编造不存在的分数或 traits 维度。",
+        "5) 标记为作答计分的题目只表示候选人完成了信息选择，不代表答对/答错。",
         task_hint,
         f"【测验】{spec.get('title', '')}",
     ]

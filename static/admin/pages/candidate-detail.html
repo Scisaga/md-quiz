@@ -342,5 +342,31 @@
                   </button>
                 </div>
               </div>
+
+              <div class="admin-surface rounded-3xl border border-white/70 bg-white/82 p-5 shadow-[var(--admin-shadow)] backdrop-blur-xl">
+                <h2 class="text-xl font-semibold tracking-[-0.03em] text-slate-900">名片文件</h2>
+                <dl class="mt-4 divide-y divide-slate-200 rounded-2xl border border-white/80 bg-white/60">
+                  <div class="grid gap-1 px-4 py-3 sm:grid-cols-[7rem_1fr] sm:items-start sm:gap-3">
+                    <dt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">当前名片</dt>
+                    <dd class="min-w-0 break-all text-sm text-slate-700" x-text="candidateDetail.candidate?.business_card_filename || '暂无名片'"></dd>
+                  </div>
+                  <div class="grid gap-1 px-4 py-3 sm:grid-cols-[7rem_1fr] sm:items-start sm:gap-3">
+                    <dt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">文件大小</dt>
+                    <dd class="text-sm text-slate-700" x-text="formatFileSize(candidateDetail.candidate?.business_card_size)"></dd>
+                  </div>
+                  <div class="grid gap-1 px-4 py-3 sm:grid-cols-[7rem_1fr] sm:items-start sm:gap-3">
+                    <dt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">上传时间</dt>
+                    <dd class="text-sm text-slate-700" x-text="formatDateTime(candidateDetail.candidate?.business_card_uploaded_at) || '暂无记录'"></dd>
+                  </div>
+                </dl>
+                <button
+                  @click="downloadCandidateBusinessCard"
+                  type="button"
+                  :disabled="!candidateDetail.candidate?.business_card_filename"
+                  class="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  下载当前名片
+                </button>
+              </div>
             </section>
           </div>

@@ -531,17 +531,20 @@ def _archive_candidate_attempt(assignment: dict, *, spec: dict | None = None) ->
         if qtype in {"single", "multiple"}:
             options_out = []
             for o in (full_q.get("options") or []):
-                options_out.append(
-                    {
-                        "key": o.get("key"),
-                        "text": o.get("text"),
-                        "correct": bool(o.get("correct")),
-                    }
-                )
+                item = {
+                    "key": o.get("key"),
+                    "text": o.get("text"),
+                    "correct": bool(o.get("correct")),
+                }
+                traits = o.get("traits")
+                if isinstance(traits, dict) and traits:
+                    item["traits"] = dict(traits)
+                options_out.append(item)
         item = {
             "qid": qid,
             "label": full_q.get("label") or pub_q.get("label") or qid,
             "type": qtype,
+            "scoring_mode": full_q.get("scoring_mode") or pub_q.get("scoring_mode") or "",
             "max_points": full_q.get("max_points") or full_q.get("points") or pub_q.get("max_points") or pub_q.get("points"),
             "stem_md": pub_q.get("stem_md") or full_q.get("stem_md"),
             "options": options_out or pub_q.get("options"),
@@ -662,15 +665,21 @@ def _augment_archive_with_spec(archive: dict) -> dict:
             q["label"] = full_q.get("label") or full_q.get("qid")
         if not q.get("rubric") and full_q.get("rubric"):
             q["rubric"] = full_q.get("rubric")
+        if not q.get("scoring_mode") and full_q.get("scoring_mode"):
+            q["scoring_mode"] = full_q.get("scoring_mode")
         if q.get("type") in {"single", "multiple"}:
             # If options don't carry correctness, fill them from spec.
             opts = q.get("options") or []
             has_correct = any(isinstance(o, dict) and ("correct" in o) for o in opts)
             if not has_correct and full_q.get("options"):
-                q["options"] = [
-                    {"key": o.get("key"), "text": o.get("text"), "correct": bool(o.get("correct"))}
-                    for o in (full_q.get("options") or [])
-                ]
+                options_out = []
+                for o in (full_q.get("options") or []):
+                    item = {"key": o.get("key"), "text": o.get("text"), "correct": bool(o.get("correct"))}
+                    traits = o.get("traits")
+                    if isinstance(traits, dict) and traits:
+                        item["traits"] = dict(traits)
+                    options_out.append(item)
+                q["options"] = options_out
         if not q.get("stem_md") and full_q.get("stem_md"):
             q["stem_md"] = full_q.get("stem_md")
     return archive

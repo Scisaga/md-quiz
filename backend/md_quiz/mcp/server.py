@@ -229,9 +229,22 @@ def create_mcp_server(*, container: Any, settings: Any) -> tuple[Any, FastAPI]:
         return _audit("quiz_get", lambda: service.quiz_get(quiz_key))
 
     @server.tool()
-    def quiz_set_public_invite(quiz_key: str, enabled: bool) -> dict[str, Any]:
-        """开启或关闭测验公开邀约。"""
-        return _audit("quiz_set_public_invite", lambda: service.quiz_set_public_invite(quiz_key, enabled=enabled))
+    def quiz_set_public_invite(
+        quiz_key: str,
+        enabled: bool,
+        material_mode: str | None = None,
+        ignore_timing: bool | None = None,
+    ) -> dict[str, Any]:
+        """开启或关闭测验公开邀约，可选设置资料采集模式与是否忽略计时。"""
+        return _audit(
+            "quiz_set_public_invite",
+            lambda: service.quiz_set_public_invite(
+                quiz_key,
+                enabled=enabled,
+                material_mode=material_mode,
+                ignore_timing=ignore_timing,
+            ),
+        )
 
     @server.tool()
     def candidate_list(

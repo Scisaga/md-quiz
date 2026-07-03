@@ -44,7 +44,7 @@ export function createPublicRouterModule() {
 
           shouldEnableBackGuard() {
             const step = String(this.state.step || "").trim();
-            return this.route.kind === "attempt" && ["verify", "resume", "quiz"].includes(step);
+            return this.route.kind === "attempt" && ["verify", "resume", "intake", "quiz"].includes(step);
           },
 
           shouldSkipSameFlowHistory(pathname = location.pathname) {
@@ -169,7 +169,7 @@ export function createPublicRouterModule() {
           parseRoute(pathname) {
             let match = pathname.match(/^\/p\/([^/]+)$/);
             if (match) return { kind: "invite", token: decodeURIComponent(match[1]) };
-            match = pathname.match(/^\/(?:t|resume|quiz|exam|done|a)\/([^/]+)$/);
+            match = pathname.match(/^\/(?:t|intake|resume|quiz|exam|done|a)\/([^/]+)$/);
             if (match) return { kind: "attempt", token: decodeURIComponent(match[1]) };
             return { kind: "invalid", token: "" };
           },
@@ -215,8 +215,8 @@ export function createPublicRouterModule() {
               this.forms.verify.phone = this.state.verify?.phone || "";
             }
             this.resetVerifyCode();
-          } else if (this.state.step === "resume") {
-            this.viewCard = "resume";
+          } else if (this.state.step === "resume" || this.state.step === "intake") {
+            this.viewCard = "intake";
           } else if (this.state.step === "quiz") {
             this.viewCard = this.state.quiz?.entered_at ? "question" : "start";
           } else if (this.state.step === "done") {

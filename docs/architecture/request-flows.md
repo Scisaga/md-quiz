@@ -12,14 +12,16 @@
 
 ## 候选人端 SPA
 
-1. 浏览器访问 `/p/{public_token}`、`/t/{token}`、`/resume/{token}`、`/quiz/{token}`、`/done/{token}` 等路径时，请求进入 FastAPI。
+1. 浏览器访问 `/p/{public_token}`、`/t/{token}`、`/intake/{token}`、`/resume/{token}`、`/quiz/{token}`、`/done/{token}` 等路径时，请求进入 FastAPI。
 2. FastAPI 统一返回 `static/public/index.html` 作为候选人端 SPA 壳。
 3. `static/public/modules/router.js` 先解析路径：
    - `/p/{public_token}` 会先请求 `/api/public/invites/{public_token}/ensure`
    - 其它路径直接识别为既有答题 token
 4. 前端为每个 token 维护一个 `sessionStorage` 会话 ID，并在后续请求里带上 `X-Public-Session-Id`。
 5. 前端请求 `/api/public/attempt/{token}` 获取当前步骤、公开测验快照、答题状态和结果状态。
-6. 返回的 `step` 决定候选人端视图切到 `start / resume / question / done / unavailable`，并动态挂载 `static/public/views/*.html` 片段。
+6. 返回的 `step` 决定候选人端视图切到 `start / intake / question / done / unavailable`，旧 `resume` step 会兼容映射到 intake 视图，并动态挂载 `static/public/views/*.html` 片段。
+
+公开邀约的身份要求固定为姓名与手机号短信验证。验证码通过后，assignment 中快照的 `public_invite.material_mode` 决定后续流程：`none` 直接创建/复用候选人并进入答题，`resume` 进入简历上传/复用，`business_card` 进入名片上传/复用。
 
 ## 旧链接兼容
 

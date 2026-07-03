@@ -64,6 +64,12 @@ _HORIZONTAL_RULE_RE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
 _TRAILING_HARD_BREAK_RE = re.compile(r"(?:\\|[ \t]{2,})\s*$")
 _FILENAME_UNSAFE_RE = re.compile(r'[\\\\/:*?"<>|]+')
 _PUBLIC_INVITE_GUARD = threading.Lock()
+PUBLIC_INVITE_MATERIAL_MODES = {"none", "resume", "business_card"}
+
+
+def normalize_public_invite_material_mode(value: Any) -> str:
+    mode = str(value or "").strip().lower()
+    return mode if mode in PUBLIC_INVITE_MATERIAL_MODES else "resume"
 _MARKDOWN_EXTENSIONS = [
     "markdown.extensions.fenced_code",
     "markdown.extensions.footnotes",
@@ -79,12 +85,14 @@ _MARKDOWN_EXTENSIONS = [
 def get_public_invite_config(quiz_key: str) -> dict[str, object]:
     exam = get_quiz_definition(str(quiz_key or "").strip()) or {}
     if not exam:
-        return {"enabled": False, "token": ""}
+        return {"enabled": False, "token": "", "material_mode": "resume", "ignore_timing": False}
     enabled = bool(exam.get("public_invite_enabled"))
     token = str(exam.get("public_invite_token") or "").strip()
+    material_mode = normalize_public_invite_material_mode(exam.get("public_invite_material_mode"))
+    ignore_timing = bool(exam.get("public_invite_ignore_timing"))
     if str(exam.get("status") or "").strip() != "active" or int(exam.get("current_version_id") or 0) <= 0:
         enabled = False
-    return {"enabled": enabled, "token": token}
+    return {"enabled": enabled, "token": token, "material_mode": material_mode, "ignore_timing": ignore_timing}
 
 
 def compute_quiz_time_limit_seconds(spec: dict[str, Any]) -> int:
@@ -124,18 +132,42 @@ def _compute_public_invite_token_for_exam(*, quiz_key: str, created_at: str, tit
     raise RuntimeError("Failed to allocate a collision-free public invite token")
 
 
-def set_public_invite_enabled(quiz_key: str, enabled: bool) -> dict[str, object]:
+def set_public_invite_enabled(
+    quiz_key: str,
+    enabled: bool,
+    *,
+    material_mode: str | None = None,
+    ignore_timing: bool | None = None,
+) -> dict[str, object]:
     ek = str(quiz_key or "").strip()
     if not ek:
-        return {"enabled": False, "token": ""}
+        return {"enabled": False, "token": "", "material_mode": "resume", "ignore_timing": False}
     exam = get_quiz_definition(ek)
     if not exam:
-        return {"enabled": False, "token": ""}
+        return {"enabled": False, "token": "", "material_mode": "resume", "ignore_timing": False}
+    current_material_mode = normalize_public_invite_material_mode(exam.get("public_invite_material_mode"))
+    current_ignore_timing = bool(exam.get("public_invite_ignore_timing"))
+    next_material_mode = (
+        normalize_public_invite_material_mode(material_mode)
+        if material_mode is not None
+        else current_material_mode
+    )
+    next_ignore_timing = bool(ignore_timing) if ignore_timing is not None else current_ignore_timing
     if enabled:
         if str(exam.get("status") or "").strip() != "active":
-            return {"enabled": False, "token": ""}
+            return {
+                "enabled": False,
+                "token": "",
+                "material_mode": next_material_mode,
+                "ignore_timing": next_ignore_timing,
+            }
         if int(exam.get("current_version_id") or 0) <= 0:
-            return {"enabled": False, "token": ""}
+            return {
+                "enabled": False,
+                "token": "",
+                "material_mode": next_material_mode,
+                "ignore_timing": next_ignore_timing,
+            }
 
     with _PUBLIC_INVITE_GUARD:
         token0 = str(exam.get("public_invite_token") or "").strip()
@@ -146,10 +178,27 @@ def set_public_invite_enabled(quiz_key: str, enabled: bool) -> dict[str, object]
         else:
             token = token0 if token0 else None
         try:
-            set_exam_public_invite(ek, enabled=bool(enabled), token=(token or None))
+            set_exam_public_invite(
+                ek,
+                enabled=bool(enabled),
+                token=(token or None),
+                material_mode=next_material_mode,
+                ignore_timing=next_ignore_timing,
+            )
         except Exception:
-            return {"enabled": False, "token": ""}
-    return {"enabled": bool(enabled), "token": token}
+            return {
+                "enabled": False,
+                "token": "",
+                "material_mode": current_material_mode,
+                "ignore_timing": current_ignore_timing,
+            }
+    return {
+        "enabled": bool(enabled),
+        "token": token,
+        "material_mode": next_material_mode,
+        "ignore_timing": next_ignore_timing,
+    }
+
 
 def _resolve_public_invite_quiz_key(public_token: str) -> str:
     t = str(public_token or "").strip()

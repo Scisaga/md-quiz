@@ -50,6 +50,8 @@
 - `quiz_get`
 - `quiz_set_public_invite`
 
+`quiz_set_public_invite` 可选传入 `material_mode`（`none | resume | business_card`）和 `ignore_timing`；未传时沿用当前公开邀约配置。
+
 ### 候选人与档案
 
 - `candidate_list`

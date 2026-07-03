@@ -205,6 +205,27 @@ def download_candidate_resume(candidate_id: int, request: Request):
     return Response(content=bytes(data), media_type=mime, headers=headers)
 
 
+@router.get("/candidates/{candidate_id}/business-card")
+def download_candidate_business_card(candidate_id: int, request: Request):
+    shared._require_admin(request)
+    candidate = shared.deps.get_candidate(candidate_id)
+    if not candidate:
+        raise shared.HTTPException(status_code=404, detail="候选人不存在")
+    business_card = shared.deps.get_candidate_business_card(candidate_id)
+    if not business_card:
+        raise shared.HTTPException(status_code=404, detail="名片不存在")
+    data = business_card.get("business_card_bytes") or b""
+    if not isinstance(data, (bytes, bytearray)) or not data:
+        raise shared.HTTPException(status_code=404, detail="名片不存在")
+    filename = (
+        os.path.basename(str(business_card.get("business_card_filename") or "").strip())
+        or f"candidate_{candidate_id}_business_card.bin"
+    )
+    mime = str(business_card.get("business_card_mime") or "").strip() or "application/octet-stream"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(content=bytes(data), media_type=mime, headers=headers)
+
+
 @router.post("/candidates/{candidate_id}/resume/reparse")
 def reparse_candidate_resume(candidate_id: int, request: Request, file: UploadFile = File(...)):
     shared._require_admin(request)

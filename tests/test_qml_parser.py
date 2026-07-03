@@ -154,6 +154,8 @@ def test_parse_qml_trait_single_allows_explicit_zero_points_without_correct_opti
     public_question = public_exam["questions"][0]
     assert question["points"] == 0
     assert question["max_points"] == 0
+    assert question["scoring_mode"] == "traits"
+    assert public_question["scoring_mode"] == "traits"
     assert question["answer_time_seconds"] == 20
     assert [option["correct"] for option in question["options"]] == [False, False, False, False, False]
     assert question["options"][0]["traits"] == {"I": 2}
@@ -171,6 +173,77 @@ def test_parse_qml_trait_single_rejects_correct_marker() -> None:
 """.strip()
 
     with pytest.raises(QmlParseError, match="trait single must not use correct option"):
+        parse_qml_markdown(markdown)
+
+
+def test_parse_qml_completion_choices_allow_no_correct_option() -> None:
+    exam, public_exam = parse_qml_markdown(
+        """
+## Q1 [single] (2) {scoring=completion, answer_time=30s}
+请选择当前所在城市。
+
+- A) 北京
+- B) 上海
+
+## Q2 [multiple] (3) {scoring=completion, answer_time=45s}
+请选择可触达资源。可多选。
+
+- A) 产业资源
+- B) 资金资源
+- C) 渠道资源
+""".strip()
+    )
+
+    single = exam["questions"][0]
+    multiple = exam["questions"][1]
+    public_single = public_exam["questions"][0]
+    public_multiple = public_exam["questions"][1]
+
+    assert single["scoring_mode"] == "completion"
+    assert multiple["scoring_mode"] == "completion"
+    assert public_single["scoring_mode"] == "completion"
+    assert public_multiple["scoring_mode"] == "completion"
+    assert [option["correct"] for option in single["options"]] == [False, False]
+    assert [option["correct"] for option in multiple["options"]] == [False, False, False]
+    assert public_single["options"] == [{"key": "A", "text": "北京"}, {"key": "B", "text": "上海"}]
+
+
+def test_parse_qml_completion_choices_reject_correct_marker() -> None:
+    markdown = """
+## Q1 [multiple] (1) {scoring=completion, answer_time=30s}
+请选择可触达资源。
+
+- A*) 产业资源
+- B) 资金资源
+""".strip()
+
+    with pytest.raises(QmlParseError, match="completion choice must not use correct option"):
+        parse_qml_markdown(markdown)
+
+
+def test_parse_qml_completion_choices_reject_traits() -> None:
+    markdown = """
+## Q1 [single] (1) {scoring=completion, answer_time=30s}
+请选择可触达资源。
+
+- A) 产业资源 {traits=I:1}
+- B) 资金资源
+""".strip()
+
+    with pytest.raises(QmlParseError, match="completion choice must not use option traits"):
+        parse_qml_markdown(markdown)
+
+
+def test_parse_qml_regular_choice_still_requires_correct_option() -> None:
+    markdown = """
+## Q1 [multiple] (1) {answer_time=30s}
+请选择可触达资源。
+
+- A) 产业资源
+- B) 资金资源
+""".strip()
+
+    with pytest.raises(QmlParseError, match="has no correct option"):
         parse_qml_markdown(markdown)
 
 
