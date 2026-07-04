@@ -8,11 +8,11 @@ export function createAdminShellModule() {
     async boot() {
       this.initAdminSidebarState();
       this.initAdminCompactLayout();
-      window.addEventListener("popstate", () => this.handleRoute(location.pathname, { replace: true }));
+      window.addEventListener("popstate", () => this.handleRoute(`${location.pathname}${location.search}${location.hash}`, { replace: true }));
       await this.refreshSession();
       if (this.session.authenticated) {
         await this.loadBootstrap();
-        await this.handleRoute(location.pathname, { replace: true });
+        await this.handleRoute(`${location.pathname}${location.search}${location.hash}`, { replace: true });
       } else {
         this.route = this.resolveRoute("/admin/login");
         await this.renderCurrentRoute();
@@ -148,6 +148,63 @@ export function createAdminShellModule() {
       const target = String(href || "").trim();
       if (!target) return false;
       return String(this.route?.path || "").startsWith(target);
+    },
+
+    routeBreadcrumbItems() {
+      const breadcrumb = this.route?.breadcrumb || null;
+      if (!breadcrumb) return [];
+      const parentLabel = String(breadcrumb.parentLabel || "").trim();
+      const parentHref = String(breadcrumb.parentHref || "").trim();
+      const currentLabel = this.routeBreadcrumbCurrentLabel()
+        || String(breadcrumb.fallbackLabel || this.route?.title || "").trim();
+      return [
+        { label: parentLabel, href: parentHref, current: false },
+        { label: currentLabel, href: "", current: true },
+      ].filter((item) => item.label);
+    },
+
+    routeBreadcrumbCurrentLabel() {
+      const routeName = String(this.route?.name || "").trim();
+      if (routeName === "candidate-detail") {
+        return this.candidateBreadcrumbLabel();
+      }
+      if (routeName === "quiz-detail") {
+        return this.quizBreadcrumbLabel();
+      }
+      if (routeName === "attempt-detail") {
+        return this.attemptBreadcrumbLabel();
+      }
+      return "";
+    },
+
+    candidateBreadcrumbLabel() {
+      const routeCandidateId = Number(this.route?.params?.candidateId || 0);
+      const candidate = this.candidateDetail?.candidate || {};
+      const candidateId = Number(candidate?.id || 0);
+      if (!routeCandidateId || candidateId !== routeCandidateId) return "";
+      return String(candidate?.name || "").trim();
+    },
+
+    quizBreadcrumbLabel() {
+      const routeQuizKey = String(this.route?.params?.quizKey || "").trim();
+      const quiz = this.quizDetail?.quiz || {};
+      const quizKey = String(quiz?.quiz_key || "").trim();
+      if (!routeQuizKey || quizKey !== routeQuizKey) return "";
+      return String(quiz?.title || quizKey).trim();
+    },
+
+    attemptBreadcrumbLabel() {
+      const routeToken = String(this.route?.params?.token || "").trim();
+      const paper = this.attemptDetail?.quiz_paper || {};
+      const assignment = this.attemptDetail?.assignment || {};
+      const detailToken = String(paper?.token || assignment?.token || "").trim();
+      if (!routeToken || detailToken !== routeToken) return "";
+      const candidateName = String(paper?.candidate_name || assignment?.candidate_name || "").trim();
+      const quizLabel = String(
+        paper?.quiz_title || assignment?.quiz_title || paper?.quiz_key || assignment?.quiz_key || "",
+      ).trim();
+      if (candidateName && quizLabel) return `${candidateName} · ${quizLabel}`;
+      return candidateName || quizLabel;
     },
 
     async setAdminCompactTab(routeName, tabId, { scroll = false } = {}) {

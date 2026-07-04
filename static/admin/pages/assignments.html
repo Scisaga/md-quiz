@@ -103,45 +103,68 @@
       </label>
     </div>
 
-    <div>
-      <div class="admin-r-table-head grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_10rem] gap-3">
-        <span>候选人 / 测验</span>
+    <div x-show="assignmentRouteFilterChips().length" x-cloak class="admin-r-section flex flex-wrap items-center gap-2">
+      <span class="admin-r-label">当前筛选</span>
+      <template x-for="chip in assignmentRouteFilterChips()" :key="chip.key">
+        <button type="button" @click="clearAssignmentRouteFilter(chip.key)" class="admin-r-pill border-blue-200 bg-blue-50 text-blue-700">
+          <span x-text="chip.label"></span>
+          <span class="admin-r-pill__icon material-symbols-rounded">close</span>
+        </button>
+      </template>
+      <button type="button" @click="clearAssignmentRouteFilters" class="text-xs text-slate-500 transition hover:text-blue-700">清除筛选</button>
+    </div>
+
+    <div class="admin-r-responsive-list admin-r-responsive-list--assignments">
+      <div class="admin-r-table-head admin-r-responsive-list__head">
+        <span>候选人</span>
+        <span>测验</span>
         <span>状态</span>
         <span>得分</span>
-        <span>处理</span>
+        <span>QR</span>
         <span>操作</span>
       </div>
-      <template x-for="item in assignments.items" :key="item.attempt_id">
-        <div @click="go('/admin/attempt/' + item.token)" @keydown.enter.prevent="go('/admin/attempt/' + item.token)" tabindex="0" role="button" class="admin-r-row grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_10rem] items-center gap-3">
-          <span class="min-w-0">
-            <span class="admin-r-row-title" x-text="item.candidate_name"></span>
-            <span class="admin-r-row-meta">
-              <span x-text="item.quiz_key"></span>
-              <span class="mx-1 text-slate-300">·</span>
-              <span class="admin-r-code" x-text="item.token"></span>
+      <div class="admin-r-responsive-list__body">
+        <template x-for="item in assignments.items" :key="item.attempt_id">
+          <div @click="go('/admin/attempt/' + item.token)" @keydown.enter.prevent="go('/admin/attempt/' + item.token)" @keydown.space.prevent="go('/admin/attempt/' + item.token)" tabindex="0" role="button" class="admin-r-row admin-r-responsive-list__row">
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--candidate">
+              <span class="admin-r-row-title block" x-text="item.candidate_name"></span>
+              <span class="admin-r-row-meta admin-r-code" x-text="item.token"></span>
             </span>
-          </span>
-          <span class="flex flex-wrap gap-1.5">
-            <span :class="assignmentSourceBadgeClass()" x-text="item.source_label"></span>
-            <span :class="assignmentStatusBadgeClass(item)" x-text="item.status_label"></span>
-          </span>
-          <span class="text-sm tabular-nums text-slate-700" x-text="item.score_display || '-'"></span>
-          <span>
-            <span x-show="canToggleAssignmentHandling(item)" :class="assignmentHandlingBadgeClass(item)" x-text="assignmentHandlingLabel(item)"></span>
-            <span x-show="assignmentIgnoresTiming(item)" class="admin-r-pill admin-r-pill--warn mt-1">忽略计时</span>
-          </span>
-          <span class="flex flex-wrap gap-1.5">
-            <button @click.stop="go('/admin/attempt/' + item.token)" type="button" :class="assignmentActionButtonClass('detail', item)">详情</button>
-            <button x-show="canToggleAssignmentHandling(item)" @click.stop="toggleAssignmentHandling(item)" type="button" :class="assignmentActionButtonClass('handling', item)" x-text="assignmentHandlingActionLabel(item)"></button>
-            <button x-show="canDeleteAssignment(item)" @click.stop="deleteAssignment(item)" type="button" :class="assignmentActionButtonClass('danger', item)">删除</button>
-          </span>
-          <span class="col-span-full mt-1 flex min-w-0 items-center gap-2 border-t border-blue-100/60 pt-2">
-            <span class="admin-r-label">URL</span>
-            <button @click.stop="copyAssignmentUrl(item)" type="button" class="min-w-0 truncate admin-r-code text-left underline decoration-dotted underline-offset-2" x-text="item.url || '-'"></button>
-            <button @click.stop="copyAssignmentQr(item)" type="button" class="admin-r-button min-h-7 px-2 text-[11px]" title="复制二维码">QR</button>
-          </span>
-        </div>
-      </template>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--quiz">
+              <span class="block truncate text-sm text-slate-800" x-text="item.quiz_title || item.quiz_key"></span>
+              <span class="admin-r-row-meta admin-r-code" x-text="item.quiz_key"></span>
+            </span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--status">
+              <span class="flex min-w-0 flex-wrap gap-1.5">
+                <span :class="assignmentSourceBadgeClass(item)" :aria-label="assignmentSourceLabel(item)">
+                  <span class="admin-r-pill__icon material-symbols-rounded" aria-hidden="true" x-text="assignmentSourceIcon(item)"></span>
+                  <span x-text="assignmentSourceLabel(item)"></span>
+                </span>
+                <span :class="assignmentStatusBadgeClass(item)" x-text="item.status_label || '状态未知'"></span>
+                <span x-show="assignmentIgnoresTiming(item)" class="admin-r-pill admin-r-pill--warn">忽略计时</span>
+              </span>
+            </span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--score">
+              <span class="text-sm tabular-nums text-slate-700" x-text="item.score_display || '-'"></span>
+            </span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--qr">
+              <span>
+                <button x-show="item.qr_url" @click.stop="copyAssignmentQr(item)" type="button" class="assignment-qr-thumb" title="复制二维码" aria-label="复制邀约二维码">
+                  <img :src="item.qr_url" alt="" loading="lazy" class="assignment-qr-thumb__image" />
+                </button>
+                <span x-show="!item.qr_url" class="admin-r-code">-</span>
+              </span>
+            </span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--actions">
+              <button x-show="canToggleAssignmentHandling(item)" @click.stop="toggleAssignmentHandling(item)" type="button" :class="assignmentActionButtonClass('handling', item)" x-text="assignmentHandlingActionLabel(item)"></button>
+              <button x-show="canDeleteAssignment(item)" @click.stop="deleteAssignment(item)" type="button" :class="assignmentActionButtonClass('danger', item)">
+                <span class="assignment-action__icon material-symbols-rounded" aria-hidden="true">delete</span>
+                <span class="assignment-action__text">删除</span>
+              </button>
+            </span>
+          </div>
+        </template>
+      </div>
       <div x-show="!(assignments.items || []).length" class="admin-r-empty">当前筛选条件下没有邀约记录</div>
     </div>
 

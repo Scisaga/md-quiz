@@ -54,6 +54,23 @@
       font-size: 20px;
     }
 
+    .admin-r-breadcrumb__list,
+    .admin-r-breadcrumb__item {
+      gap: 4px;
+    }
+
+    .admin-r-breadcrumb__link {
+      font-size: 13px;
+    }
+
+    .admin-r-breadcrumb__current {
+      font-size: 18px;
+    }
+
+    .admin-r-breadcrumb__separator {
+      font-size: 18px;
+    }
+
     .admin-r-topbar__meta {
       gap: 6px;
     }
@@ -130,6 +147,17 @@
       stroke-width: 9.5;
     }
 
+    .admin-r-mobile-nav__item .admin-r-mcp-icon {
+      width: 23px;
+      height: 23px;
+      transform: scaleX(1.1);
+      transform-origin: center;
+    }
+
+    .admin-r-mobile-nav__item .admin-r-mcp-icon path {
+      stroke-width: 16;
+    }
+
     .admin-r-mobile-nav__label {
       max-width: 100%;
       overflow: hidden;
@@ -155,6 +183,11 @@
         font-size: 19px;
         width: 19px;
         height: 19px;
+      }
+
+      .admin-r-mobile-nav__item .admin-r-mcp-icon {
+        width: 22px;
+        height: 22px;
       }
     }
 

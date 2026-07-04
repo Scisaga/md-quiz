@@ -59,6 +59,7 @@
         <button
           type="button"
           @click="toggleQuizPublicInviteFilter"
+          aria-label="只看公开邀约测验"
           :aria-pressed="String(Boolean(quizPublicInviteFilterValue()))"
           :class="quizPublicInviteFilterButtonClass()"
           class="admin-r-button"
@@ -85,28 +86,30 @@
       <div class="min-w-[760px]">
         <template x-for="item in quizzes.items" :key="item.quiz_key">
           <div
-            @click="selectQuizListItem(item)"
-            @keydown.enter.prevent="selectQuizListItem(item)"
+            @click="go('/admin/quizzes/' + item.quiz_key)"
+            @keydown.enter.prevent="go('/admin/quizzes/' + item.quiz_key)"
+            @keydown.space.prevent="go('/admin/quizzes/' + item.quiz_key)"
             tabindex="0"
             role="button"
-            class="admin-r-row grid-cols-[minmax(18rem,1fr)_6rem_5rem_5rem_7rem_3rem] items-center gap-3"
+            class="admin-r-row cursor-pointer grid-cols-[minmax(18rem,1fr)_6rem_5rem_5rem_7rem_3rem] items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-200"
             :class="selectedQuizListItem()?.quiz_key === item.quiz_key ? 'bg-blue-50/70 shadow-[3px_0_0_#2563eb_inset]' : ''"
           >
             <span class="min-w-0">
               <span class="admin-r-row-title block" x-text="item.title || item.quiz_key"></span>
-              <span class="admin-r-row-meta block">
-                <span x-text="item.quiz_key"></span>
-                <span x-show="(item.tags || []).length"> · </span>
-                <span x-show="(item.tags || []).length" x-text="(item.tags || []).slice(0, 4).join(' · ')"></span>
+              <span class="mt-2 flex flex-wrap items-center gap-2">
+                <span class="admin-r-code min-w-0 truncate font-normal" x-text="item.quiz_key"></span>
+                <template x-for="tag in (item.tags || []).slice(0, 4)" :key="`${item.quiz_key}-${tag}`">
+                  <span class="admin-r-pill admin-r-pill--info" x-text="tag"></span>
+                </template>
               </span>
             </span>
             <span class="admin-r-pill" :class="item.status === 'draft' ? 'admin-r-pill--warn' : 'admin-r-pill--ok'" x-text="item.status === 'draft' ? '草稿' : '已启用'"></span>
             <span class="text-sm text-slate-700 tabular-nums" x-text="item.question_count"></span>
             <span class="admin-r-code" x-text="item.current_version_no || '-'"></span>
             <span class="admin-r-code" x-text="item.updated_at ? formatDate(item.updated_at) : '-'"></span>
-            <button type="button" @click.stop="go('/admin/quizzes/' + item.quiz_key)" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white hover:text-blue-600" aria-label="打开测验详情">
+            <span class="grid h-8 w-8 place-items-center rounded-lg text-slate-400" aria-hidden="true">
               <span class="material-symbols-rounded text-[18px]">north_east</span>
-            </button>
+            </span>
           </div>
         </template>
       </div>
@@ -115,11 +118,11 @@
   </section>
 
   <aside x-show="adminCompactPanelVisible('quizzes', 'repo')" class="admin-r-surface">
-    <section class="admin-r-section">
+    <section id="repo-binding" class="admin-r-section scroll-mt-24">
       <div class="flex items-start justify-between gap-3">
         <div>
           <h2 class="admin-r-title">当前测验</h2>
-          <p class="admin-r-subtitle">点击列表行切换右侧检查器。</p>
+          <p class="admin-r-subtitle">点击列表行进入测验详情页。</p>
         </div>
         <button x-show="selectedQuizListItem()" type="button" @click="go('/admin/quizzes/' + selectedQuizListItem().quiz_key)" class="admin-r-button admin-r-button--soft">详情</button>
       </div>
@@ -158,7 +161,7 @@
       </div>
     </section>
 
-    <section class="admin-r-section">
+    <section id="quiz-sync" class="admin-r-section scroll-mt-24">
       <h2 class="admin-r-title">绑定仓库</h2>
       <p class="admin-r-subtitle">每个实例只绑定一个 Git 仓库。</p>
       <div class="mt-4 admin-r-repo-input" x-show="hasRepoBinding()">
@@ -182,7 +185,7 @@
           <p class="admin-r-subtitle" x-text="syncTimelineText() || '等待同步任务'"></p>
         </div>
         <span class="admin-r-pill" :class="syncStatusMeta().badgeClass">
-          <span class="material-symbols-rounded text-[16px]" :class="isSyncBusy() ? 'animate-spin' : ''" x-text="syncStatusMeta().icon"></span>
+          <span class="admin-r-pill__icon material-symbols-rounded" :class="isSyncBusy() ? 'animate-spin' : ''" x-text="syncStatusMeta().icon"></span>
           <span x-text="syncStatusMeta().label"></span>
         </span>
       </div>

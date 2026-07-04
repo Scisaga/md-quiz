@@ -47,6 +47,25 @@ export function createAdminDashboardModule() {
       return asItems(this.dashboard?.assignments).slice(0, 6);
     },
 
+    dashboardAssignmentQuizTitle(item) {
+      const title = String(item?.quiz_title ||"").trim();
+      const key = String(item?.quiz_key ||"").trim();
+      return title || key ||"未命名测验";
+    },
+
+    dashboardAssignmentQuizKey(item) {
+      const key = String(item?.quiz_key ||"").trim();
+      return key ||"-";
+    },
+
+    dashboardAssignmentInviteTime(item) {
+      return this.formatDateTime(item?.created_at) ||"-";
+    },
+
+    dashboardAssignmentAnswerTime(item) {
+      return this.formatDateTime(item?.finished_at || item?.entered_at) ||"-";
+    },
+
     dashboardAssignmentTotal() {
       return numeric(this.dashboard?.assignments?.total || asItems(this.dashboard?.assignments).length);
     },
@@ -83,6 +102,8 @@ export function createAdminDashboardModule() {
           hint: `${this.formatNumber(this.dashboardPublicInviteCount())} 个公开邀约`,
           icon:"library_books",
           tone:"blue",
+          target:"quizzes",
+          actionLabel:"查看测验列表",
         },
         {
           label:"候选人",
@@ -90,6 +111,8 @@ export function createAdminDashboardModule() {
           hint:"已入库候选人档案",
           icon:"group",
           tone:"emerald",
+          target:"candidates",
+          actionLabel:"查看候选人列表",
         },
         {
           label:"答题记录",
@@ -97,6 +120,8 @@ export function createAdminDashboardModule() {
           hint: `完成率 ${this.dashboardCompletionRate()}`,
           icon:"assignment_turned_in",
           tone:"sky",
+          target:"assignments",
+          actionLabel:"查看邀约与答题列表",
         },
         {
           label:"待处理",
@@ -104,8 +129,69 @@ export function createAdminDashboardModule() {
           hint:"完成后待管理员跟进",
           icon:"priority_high",
           tone: this.dashboardUnhandledAssignments() ?"amber" :"emerald",
+          target:"assignments-unhandled",
+          actionLabel:"查看未处理答题记录",
         },
       ];
+    },
+
+    resetDashboardQuizFilters({ publicInvite = false } = {}) {
+      this.filters.quizzes.q ="";
+      this.filters.quizzes.public_invite = publicInvite ?"enabled" :"";
+    },
+
+    resetDashboardCandidateFilters() {
+      this.filters.candidates.q ="";
+    },
+
+    resetDashboardAssignmentFilters() {
+      this.filters.assignments.q ="";
+      this.filters.assignments.quiz_key ="";
+      this.filters.assignments.start_from ="";
+      this.filters.assignments.end_to ="";
+      this.filters.assignments.status ="";
+      this.filters.assignments.handling ="";
+      this.filters.assignments.source_kind ="";
+    },
+
+    async openDashboardKpi(card) {
+      const target = String(card?.target ||"").trim();
+      if (target ==="quizzes") {
+        this.resetDashboardQuizFilters();
+        await this.go("/admin/quizzes");
+        return;
+      }
+      if (target ==="candidates") {
+        this.resetDashboardCandidateFilters();
+        await this.go("/admin/candidates");
+        return;
+      }
+      if (target ==="assignments") {
+        this.resetDashboardAssignmentFilters();
+        await this.go("/admin/assignments?page=1&start_from=&end_to=");
+        return;
+      }
+      if (target ==="assignments-unhandled") {
+        this.resetDashboardAssignmentFilters();
+        this.filters.assignments.status ="finished";
+        this.filters.assignments.handling ="unhandled";
+        await this.go("/admin/assignments?status=finished&handling=unhandled&start_from=&end_to=");
+      }
+    },
+
+    async openDashboardPublicQuizzes() {
+      this.resetDashboardQuizFilters({ publicInvite: true });
+      await this.go("/admin/quizzes?public_invite=enabled");
+    },
+
+    async openDashboardSyncPanel() {
+      this.resetDashboardQuizFilters();
+      await this.go("/admin/quizzes#quiz-sync");
+    },
+
+    async openDashboardSystemService(key) {
+      const target = String(key ||"").trim() ==="sms" ?"sms-config" :"llm-config";
+      await this.go(`/admin/status#${target}`);
     },
 
     dashboardKpiToneClass(tone) {
@@ -176,6 +262,20 @@ export function createAdminDashboardModule() {
       if (status ==="in_quiz") return"border-sky-200 bg-sky-50 text-sky-700";
       if (status ==="expired") return"border-rose-200 bg-rose-50 text-rose-700";
       return"border-slate-200 bg-slate-50 text-slate-600";
+    },
+
+    dashboardAssignmentSourceLabel(item) {
+      return String(item?.source_kind ||"").trim() ==="public" ?"公开" :"定向";
+    },
+
+    dashboardAssignmentSourceIcon(item) {
+      return String(item?.source_kind ||"").trim() ==="public" ?"language" :"badge";
+    },
+
+    dashboardAssignmentSourceClass(item) {
+      return String(item?.source_kind ||"").trim() ==="public"
+        ?"border-blue-200 bg-blue-50 text-blue-700"
+        :"border-slate-200 bg-slate-50 text-slate-600";
     },
 
     dashboardSyncSummary() {

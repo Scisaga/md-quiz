@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from backend.md_quiz.api import admin as admin_api
 from backend.md_quiz.api import public as public_api
 from backend.md_quiz.app import create_app
+from backend.md_quiz.config import settings as app_settings
 from backend.md_quiz.services import candidate_resume_admin_service, system_status_helpers
 from backend.md_quiz.services.job_service import JobService
 from backend.md_quiz.services.system_log import log_event
@@ -1612,12 +1613,137 @@ def test_admin_create_assignment_defaults_phone_verification_false(monkeypatch, 
     assert item["ignore_timing"] is False
 
 
+def test_admin_candidates_list_defaults_to_all_active_candidates(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    old_candidate_id = create_candidate("历史候选人", "13900000071")
+    current_candidate_id = create_candidate("当前候选人", "13900000072")
+    with conn_scope() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE candidate SET created_at=%s::timestamptz WHERE id=%s",
+                ("2020-01-01T00:00:00+00:00", old_candidate_id),
+            )
+
+    login_response = client.post(
+        "/api/admin/session/login",
+        json={"username": app_settings.admin_username, "password": app_settings.admin_password},
+    )
+    assert login_response.status_code == 200
+
+    response = client.get("/api/admin/candidates")
+
+    assert response.status_code == 200
+    payload = response.json()
+    ids = {int(item["id"]) for item in payload["items"]}
+    assert payload["total"] == 2
+    assert old_candidate_id in ids
+    assert current_candidate_id in ids
+    assert payload["filters"]["created_from"] == ""
+    assert payload["filters"]["created_to"] == ""
+
+    filtered_response = client.get("/api/admin/candidates?created_to=2020-01-02")
+
+    assert filtered_response.status_code == 200
+    filtered_payload = filtered_response.json()
+    assert filtered_payload["total"] == 1
+    assert [int(item["id"]) for item in filtered_payload["items"]] == [old_candidate_id]
+    assert filtered_payload["filters"]["created_to"] == "2020-01-02"
+
+
+def test_admin_candidates_list_includes_attempt_stats_and_latest_attempt(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    version_a = _seed_exam_with_metadata("candidate-list-stat-a")
+    version_b = _seed_exam_with_metadata("candidate-list-stat-b")
+    candidate_id = create_candidate("候选统计甲", "13900000017")
+    create_quiz_paper(
+        candidate_id=candidate_id,
+        phone="13900000017",
+        quiz_key="candidate-list-stat-a",
+        quiz_version_id=version_a,
+        token="candidateStatInvited",
+        invite_start_date="2026-07-01",
+        invite_end_date="2026-07-05",
+        status="invited",
+    )
+    create_quiz_paper(
+        candidate_id=candidate_id,
+        phone="13900000017",
+        quiz_key="candidate-list-stat-a",
+        quiz_version_id=version_a,
+        token="candidateStatEntered",
+        invite_start_date="2026-07-01",
+        invite_end_date="2026-07-05",
+        status="in_quiz",
+    )
+    create_quiz_paper(
+        candidate_id=candidate_id,
+        phone="13900000017",
+        quiz_key="candidate-list-stat-b",
+        quiz_version_id=version_b,
+        token="candidateStatFinished",
+        invite_start_date="2026-07-01",
+        invite_end_date="2026-07-05",
+        status="finished",
+    )
+    with conn_scope() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+UPDATE quiz_paper
+   SET entered_at=%s::timestamptz, updated_at=%s::timestamptz
+ WHERE token=%s
+""",
+                ("2026-07-03T09:00:00+00:00", "2026-07-03T09:00:00+00:00", "candidateStatEntered"),
+            )
+            cur.execute(
+                """
+UPDATE quiz_paper
+   SET entered_at=%s::timestamptz, finished_at=%s::timestamptz, updated_at=%s::timestamptz
+ WHERE token=%s
+""",
+                (
+                    "2026-07-03T10:00:00+00:00",
+                    "2026-07-03T10:30:00+00:00",
+                    "2026-07-03T10:30:00+00:00",
+                    "candidateStatFinished",
+                ),
+            )
+
+    login_response = client.post(
+        "/api/admin/session/login",
+        json={"username": app_settings.admin_username, "password": app_settings.admin_password},
+    )
+    assert login_response.status_code == 200
+    response = client.get("/api/admin/candidates?q=候选统计甲")
+
+    assert response.status_code == 200
+    payload = response.json()
+    item = next(row for row in payload["items"] if row["id"] == candidate_id)
+    assert item["invite_count"] == 3
+    assert item["attempt_count"] == 2
+    latest_attempt = item["latest_attempt"]
+    assert latest_attempt == {
+        "token": "candidateStatFinished",
+        "quiz_key": "candidate-list-stat-b",
+        "quiz_title": "人格类型测试",
+        "status": "finished",
+        "status_label": "判卷结束",
+        "entered_at": latest_attempt["entered_at"],
+        "finished_at": latest_attempt["finished_at"],
+    }
+    assert datetime.fromisoformat(latest_attempt["entered_at"]).astimezone(timezone.utc).isoformat() == "2026-07-03T10:00:00+00:00"
+    assert datetime.fromisoformat(latest_attempt["finished_at"]).astimezone(timezone.utc).isoformat() == "2026-07-03T10:30:00+00:00"
+
+
 def test_admin_create_assignment_can_enable_phone_verification(monkeypatch, tmp_path):
     client = _build_client(monkeypatch, tmp_path)
     _seed_exam_with_metadata("assign-enable-phone-verify-demo")
     candidate_id = create_candidate("显式开启候选人", "13900000014")
 
-    login_response = client.post("/api/admin/session/login", json={"username": "admin", "password": "password"})
+    login_response = client.post(
+        "/api/admin/session/login",
+        json={"username": app_settings.admin_username, "password": app_settings.admin_password},
+    )
     assert login_response.status_code == 200
 
     create_response = client.post(
@@ -1641,6 +1767,7 @@ def test_admin_create_assignment_can_enable_phone_verification(monkeypatch, tmp_
     detail_response = client.get(f"/api/admin/attempts/{token}")
     assert detail_response.status_code == 200
     assert detail_response.json()["assignment"]["require_phone_verification"] is True
+    assert detail_response.json()["quiz_paper"]["quiz_title"] == "人格类型测试"
 
 
 def test_admin_create_assignment_can_ignore_timing(monkeypatch, tmp_path):
@@ -3451,6 +3578,42 @@ def test_admin_can_delete_finished_assignment_and_archive(monkeypatch, tmp_path)
     candidate_detail = client.get(f"/api/admin/candidates/{candidate_id}")
     assert candidate_detail.status_code == 200
     assert candidate_detail.json()["profile"]["attempt_results"] == []
+
+
+def test_admin_candidate_detail_includes_attempt_score_display(monkeypatch, tmp_path):
+    client = _build_client(monkeypatch, tmp_path)
+    version_id = _seed_exam_with_metadata("candidate-detail-score-demo")
+    candidate_id = create_candidate("分数展示候选人", "13900000028")
+    now = datetime.now(timezone.utc).isoformat()
+    token = "candidateScore001"
+    save_quiz_archive(
+        archive_name="archive-candidateScore001",
+        token=token,
+        candidate_id=candidate_id,
+        quiz_key="candidate-detail-score-demo",
+        quiz_version_id=version_id,
+        phone="13900000028",
+        archive={
+            "token": token,
+            "exam": {"quiz_key": "candidate-detail-score-demo", "title": "私募基金募资合伙人筛选问卷"},
+            "timing": {"start_at": now, "end_at": now},
+            "total_score": 18,
+            "score_max": 22,
+            "result_mode": "scored",
+        },
+    )
+    _admin_login(client)
+
+    response = client.get(f"/api/admin/candidates/{candidate_id}")
+
+    assert response.status_code == 200
+    attempts = response.json()["profile"]["attempt_results"]
+    assert len(attempts) == 1
+    assert attempts[0]["token"] == token
+    assert attempts[0]["score"] == 18
+    assert attempts[0]["score_max"] == 22
+    assert attempts[0]["score_display"] == "18 / 22"
+    assert attempts[0]["result_mode"] == "scored"
 
 
 def test_exam_repo_binding_persists_and_auto_enqueues_sync(monkeypatch, tmp_path):

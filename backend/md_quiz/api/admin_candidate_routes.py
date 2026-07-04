@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import mimetypes
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, File, Request, Response, UploadFile, status
 
@@ -34,6 +34,26 @@ def _content_disposition(filename: str, *, preview: bool, mime: str) -> str:
     return f'{disposition}; filename="{filename}"'
 
 
+def _serialize_candidate_latest_attempt(item: dict) -> dict | None:
+    token = str(item.get("latest_attempt_token") or "").strip()
+    if not token:
+        return None
+    status_key = shared.validation_helpers._normalize_exam_status(
+        str(item.get("latest_attempt_status") or "").strip()
+    )
+    quiz_key = str(item.get("latest_attempt_quiz_key") or "").strip()
+    quiz_title = str(item.get("latest_attempt_quiz_title") or "").strip() or quiz_key or "测验"
+    return {
+        "token": token,
+        "quiz_key": quiz_key,
+        "quiz_title": quiz_title,
+        "status": status_key,
+        "status_label": shared._status_label(status_key),
+        "entered_at": shared._iso_or_empty(item.get("latest_attempt_entered_at")),
+        "finished_at": shared._iso_or_empty(item.get("latest_attempt_finished_at")),
+    }
+
+
 @router.get("/candidates")
 def get_candidates(
     request: Request,
@@ -43,8 +63,8 @@ def get_candidates(
     page: int = 1,
 ):
     shared._require_admin(request)
-    created_from_raw = str(created_from or "").strip() or (datetime.now().date() - timedelta(days=29)).isoformat()
-    created_to_raw = str(created_to or "").strip() or datetime.now().date().isoformat()
+    created_from_raw = str(created_from or "").strip()
+    created_to_raw = str(created_to or "").strip()
     parsed_from = shared._parse_candidate_query_dates(created_from_raw, end_of_day=False)
     parsed_to = shared._parse_candidate_query_dates(created_to_raw, end_of_day=True)
     per_page = 20
@@ -67,6 +87,9 @@ def get_candidates(
                 "phone": str(item.get("phone") or "").strip(),
                 "created_at": shared._iso_or_empty(item.get("created_at")),
                 "has_resume": bool(item.get("has_resume")),
+                "invite_count": int(item.get("invite_count") or 0),
+                "attempt_count": int(item.get("attempt_count") or 0),
+                "latest_attempt": _serialize_candidate_latest_attempt(item),
             }
             for item in items
         ],

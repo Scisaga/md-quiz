@@ -63,23 +63,23 @@
       </div>
     </div>
 
-    <section x-show="quizDetail.quiz?.public_invite_enabled && quizDetail.quiz?.public_invite_url" class="admin-r-section">
-      <div class="flex gap-4">
+    <section x-show="quizDetail.quiz?.public_invite_enabled && quizDetail.quiz?.public_invite_url" class="admin-r-section admin-public-invite">
+      <div class="admin-public-invite__main">
         <div class="min-w-0 flex-1">
           <div class="admin-r-label">公开链接</div>
-          <div class="mt-3 flex max-w-full flex-wrap items-center gap-2" role="radiogroup" aria-label="公开邀约资料采集">
+          <div class="admin-public-invite__controls" role="radiogroup" aria-label="公开邀约资料采集">
             <template x-for="option in publicInviteMaterialOptions()" :key="option.value">
-              <button type="button" role="radio" @click="setPublicInviteMaterialMode(option.value)" :aria-checked="String(publicInviteMaterialMode() === option.value)" :class="publicInviteMaterialButtonClass(option.value)" class="whitespace-nowrap rounded-lg border px-3 py-2 text-xs transition outline-none focus-visible:ring-2 focus-visible:ring-blue-300/55" x-text="option.label"></button>
+              <button type="button" role="radio" @click="setPublicInviteMaterialMode(option.value)" :aria-checked="String(publicInviteMaterialMode() === option.value)" :class="publicInviteMaterialButtonClass(option.value)" class="admin-public-invite__control" x-text="option.label"></button>
             </template>
-            <button type="button" role="switch" @click="setPublicInviteIgnoreTiming(!publicInviteIgnoreTiming())" :aria-checked="String(publicInviteIgnoreTiming())" :class="publicInviteIgnoreTimingButtonClass()" class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition outline-none focus-visible:ring-2 focus-visible:ring-blue-300/55">
-              <span class="material-symbols-rounded text-base" x-text="publicInviteIgnoreTiming() ? 'timer_off' : 'timer'"></span>
+            <button type="button" role="switch" @click="setPublicInviteIgnoreTiming(!publicInviteIgnoreTiming())" :aria-checked="String(publicInviteIgnoreTiming())" :class="publicInviteIgnoreTimingButtonClass()" class="admin-public-invite__control">
+              <span class="material-symbols-rounded admin-public-invite__control-icon" x-text="publicInviteIgnoreTiming() ? 'timer_off' : 'timer'"></span>
               <span>忽略计时</span>
             </button>
           </div>
-          <a :href="quizDetail.quiz?.public_invite_url" target="_blank" rel="noreferrer" class="mt-3 block break-all text-sm text-blue-700 underline decoration-blue-200 underline-offset-4" x-text="quizDetail.quiz?.public_invite_url"></a>
+          <a :href="quizDetail.quiz?.public_invite_url" target="_blank" rel="noreferrer" class="admin-public-invite__link" x-text="quizDetail.quiz?.public_invite_url"></a>
         </div>
-        <button x-show="quizDetail.quiz?.public_invite_qr_url" type="button" @click="copyAssignmentQr({ qr_url: quizDetail.quiz?.public_invite_qr_url })" class="h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-blue-100 bg-white p-1 transition hover:opacity-85" title="点击复制二维码" aria-label="点击复制公开邀约二维码">
-          <img :src="quizDetail.quiz?.public_invite_qr_url" alt="公开邀约二维码" class="h-full w-full object-contain" />
+        <button x-show="quizDetail.quiz?.public_invite_qr_url" type="button" @click="copyAssignmentQr({ qr_url: quizDetail.quiz?.public_invite_qr_url })" class="admin-public-invite__qr-button" title="点击复制二维码" aria-label="点击复制公开邀约二维码">
+          <img :src="quizDetail.quiz?.public_invite_qr_url" alt="公开邀约二维码" class="admin-public-invite__qr-image" />
         </button>
       </div>
     </section>
@@ -109,7 +109,7 @@
                 <span class="admin-r-pill admin-r-pill--info" x-text="questionTypeLabel(question.type)"></span>
                 <span class="admin-r-pill"><span x-text="(question.max_points || 0) + ' 分'"></span></span>
               </div>
-              <div x-show="Number(question.answer_time_seconds || 0) > 0" class="admin-r-code tabular-nums" x-text="'答题用时 ' + formatAnswerTime(question.answer_time_seconds)"></div>
+              <div x-show="Number(question.answer_time_seconds || 0) > 0" class="font-sans text-[12px] font-normal leading-5 tracking-normal text-slate-500 tabular-nums" x-text="'答题用时 ' + formatAnswerTime(question.answer_time_seconds)"></div>
             </header>
             <div class="px-4 py-3">
               <div class="quiz-rich admin-markdown text-sm leading-6 text-slate-800" x-html="question.stem_html || ''"></div>

@@ -44,6 +44,7 @@
 - 卡片只用于 KPI、当前选中项、评分摘要、风险提醒、系统状态等需要第一眼聚焦的信息。
 - 桌面端侧栏必须保留可折叠能力；折叠态只显示图标，并通过 `title` / `aria-label` 保留可访问名称。
 - 移动端主导航使用横向滚动图标条，页内复杂内容继续使用紧凑 tabs 拆分。
+- 标签、徽标、状态 pill 内的图标必须小于或等于文字高度：后台统一使用 `.admin-r-pill__icon`，图标 `font-size`、`width`、`height` 控制在 `0.92em` 左右并保留 `line-height: 1`；规则需带足覆盖能力，避免被 Material Symbols 默认 `24px` 覆盖。不要在 pill 内给 Material Symbols 写 `text-[14px]`、`text-[15px]`、`text-base` 等固定字号，避免图标撑高标签。
 
 ## 候选人端主题
 

@@ -100,7 +100,7 @@ def _status_label(status_key: str) -> str:
 
 
 def _source_label(source_kind: str) -> str:
-    return "公开邀约" if str(source_kind or "").strip() == "public" else "主动邀约"
+    return "公开邀约" if str(source_kind or "").strip() == "public" else "定向邀约"
 
 
 def _parse_date_ymd(value: str) -> date | None:
@@ -760,6 +760,9 @@ def _candidate_attempt_results(candidate: dict[str, Any]) -> list[dict[str, Any]
                 "token": str(item.get("token") or "").strip(),
                 "quiz_name": str(item.get("quiz_name") or "").strip(),
                 "score": item.get("score"),
+                "score_max": item.get("score_max"),
+                "score_display": str(item.get("score_display") or "").strip(),
+                "result_mode": str(item.get("result_mode") or "").strip(),
                 "start_at": _iso_to_local_display(str(item.get("start_at") or "")),
                 "end_at": _iso_to_local_display(str(item.get("end_at") or "")),
                 "archive_name": str(item.get("_archive_name") or "").strip(),
@@ -940,8 +943,14 @@ def _serialize_assignment_row(row: dict[str, Any], *, request: Request) -> dict[
         if recovered:
             candidate_name = recovered
     quiz_key = str(row.get("quiz_key") or "").strip()
+    quiz_title = str(row.get("quiz_title") or "").strip()
+    if _looks_deleted_marker(quiz_title):
+        quiz_title = ""
     if _looks_deleted_marker(quiz_key):
         quiz_key = "历史测验"
+        quiz_title = quiz_title or "历史测验"
+    if not quiz_title:
+        quiz_title = quiz_key or "测验"
     source_kind = "public" if str(row.get("source_kind") or "").strip() == "public" else "direct"
     require_phone_verification = bool(source_kind == "public")
     ignore_timing = False
@@ -971,6 +980,7 @@ def _serialize_assignment_row(row: dict[str, Any], *, request: Request) -> dict[
         "candidate_deleted": candidate_deleted,
         "phone": str(row.get("phone") or "").strip(),
         "quiz_key": quiz_key,
+        "quiz_title": quiz_title,
         "quiz_version_id": int(row.get("quiz_version_id") or 0),
         "token": token,
         "source_kind": source_kind,

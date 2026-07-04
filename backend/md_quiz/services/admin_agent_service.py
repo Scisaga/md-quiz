@@ -652,8 +652,8 @@ class AdminAgentService:
         page: int = 1,
         per_page: int = 20,
     ) -> dict[str, Any]:
-        created_from_raw = str(created_from or "").strip() or (datetime.now().date() - timedelta(days=29)).isoformat()
-        created_to_raw = str(created_to or "").strip() or datetime.now().date().isoformat()
+        created_from_raw = str(created_from or "").strip()
+        created_to_raw = str(created_to or "").strip()
         parsed_from = _parse_candidate_query_datetime(created_from_raw, end_of_day=False)
         parsed_to = _parse_candidate_query_datetime(created_to_raw, end_of_day=True)
         page_size = max(1, min(100, int(per_page or 20)))

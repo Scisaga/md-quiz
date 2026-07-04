@@ -48,7 +48,7 @@ dashboard: { assignments: { items: [], total: 0, summary: {} }, loading: false, 
 filters: {
   quizzes: { q: "", public_invite: "" },
   candidates: { q: "" },
-  assignments: { q: "", quiz_key: "", start_from: sixDaysAgoYmd, end_to: todayYmd },
+  assignments: { q: "", quiz_key: "", start_from: sixDaysAgoYmd, end_to: todayYmd, status: "", handling: "", source_kind: "" },
 },
 syncForm: { repoUrl: "" },
 repoBinding: {},

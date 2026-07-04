@@ -398,26 +398,25 @@ export function createAdminAssignmentsModule() {
 
     attemptReviewQuestionStatusClass(question) {
       const label = this.attemptReviewQuestionStatusLabel(question);
-      const classes = ["inline-flex items-center rounded-full border px-2.5 py-1 text-xs",
-      ];
+      const classes = ["admin-r-review-chip"];
       if (label ==="回答正确") {
-        classes.push("border-emerald-200 bg-emerald-50 text-emerald-700");
+        classes.push("admin-r-review-chip--ok");
       } else if (label ==="部分得分") {
-        classes.push("border-amber-200 bg-amber-50 text-amber-700");
+        classes.push("admin-r-review-chip--warn");
       } else if (label ==="回答错误") {
-        classes.push("border-rose-200 bg-rose-50 text-rose-700");
+        classes.push("admin-r-review-chip--danger");
       } else if (label ==="已评分") {
-        classes.push("border-blue-200 bg-blue-50 text-blue-700");
+        classes.push("admin-r-review-chip--info");
       } else if (label ==="待评分") {
-        classes.push("border-amber-200 bg-amber-50 text-amber-700");
+        classes.push("admin-r-review-chip--warn");
       } else if (label ==="已作答得分") {
-        classes.push("border-sky-200 bg-sky-50 text-sky-700");
+        classes.push("admin-r-review-chip--info");
       } else if (label ==="已作答") {
-        classes.push("border-sky-200 bg-sky-50 text-sky-700");
+        classes.push("admin-r-review-chip--info");
       } else {
-        classes.push("border-slate-200 bg-slate-50 text-slate-600");
+        classes.push("admin-r-review-chip--neutral");
       }
-      return classes.join("");
+      return classes.join(" ");
     },
 
     attemptReviewOptionIsSelected(question, option) {
@@ -431,33 +430,33 @@ export function createAdminAssignmentsModule() {
     },
 
     attemptReviewOptionRowClass(question, option) {
-      const classes = ["flex items-start gap-2.5 px-3 py-3"];
+      const classes = ["admin-r-review-option-row"];
       const selected = this.attemptReviewOptionIsSelected(question, option);
       const correct = this.attemptReviewOptionIsCorrect(question, option);
       if (this.attemptReviewIsTraitQuestion(question) || this.attemptReviewIsCompletionQuestion(question)) {
-        classes.push(selected ?"bg-sky-50/85" :"bg-slate-50/80");
+        classes.push(selected ?"admin-r-review-option-row--info" :"admin-r-review-option-row--neutral");
       } else if (selected && correct) {
-        classes.push("bg-emerald-50/85");
+        classes.push("admin-r-review-option-row--ok");
       } else if (selected) {
-        classes.push("bg-rose-50/80");
+        classes.push("admin-r-review-option-row--danger");
       } else if (correct) {
-        classes.push("bg-emerald-50/60");
+        classes.push("admin-r-review-option-row--soft-ok");
       } else {
-        classes.push("bg-slate-50/80");
+        classes.push("admin-r-review-option-row--neutral");
       }
-      return classes.join("");
+      return classes.join(" ");
     },
 
     attemptReviewOptionSelectionBadgeClass(question, option) {
-      const classes = ["shrink-0 rounded-full border px-2 py-0.5 text-[11px]"];
+      const classes = ["admin-r-review-option-badge"];
       if (this.attemptReviewIsTraitQuestion(question) || this.attemptReviewIsCompletionQuestion(question)) {
-        classes.push("border-sky-200 bg-white text-sky-700");
+        classes.push("admin-r-review-option-badge--info");
       } else if (this.attemptReviewOptionIsCorrect(question, option)) {
-        classes.push("border-emerald-200 bg-white text-emerald-700");
+        classes.push("admin-r-review-option-badge--ok");
       } else {
-        classes.push("border-rose-200 bg-white text-rose-700");
+        classes.push("admin-r-review-option-badge--danger");
       }
-      return classes.join("");
+      return classes.join(" ");
     },
 
     attemptReviewShortAnswerText(question) {
@@ -535,8 +534,24 @@ export function createAdminAssignmentsModule() {
       return Math.max(0, Number(this.assignments?.summary?.unhandled_finished_count || 0));
     },
 
-    assignmentSourceBadgeClass() {
-      return"assignment-badge assignment-badge--source";
+    assignmentSourceBadgeClass(item) {
+      return String(item?.source_kind ||"").trim() ==="public"
+        ?"admin-r-pill border-blue-200 bg-blue-50 text-blue-700"
+        :"admin-r-pill border-slate-200 bg-slate-50 text-slate-600";
+    },
+
+    assignmentSourceIcon(item) {
+      return String(item?.source_kind ||"").trim() ==="public" ?"language" :"badge";
+    },
+
+    assignmentSourceLabel(item) {
+      const sourceKind = String(item?.source_kind ||"").trim();
+      if (sourceKind ==="public") return"公开";
+      if (sourceKind ==="direct") return"定向";
+      const sourceLabel = String(item?.source_label ||"").trim();
+      if (sourceLabel.includes("公开")) return"公开";
+      if (sourceLabel.includes("定向") || sourceLabel.includes("主动")) return"定向";
+      return sourceLabel ||"来源";
     },
 
     assignmentStatusBadgeClass(item) {
@@ -562,7 +577,7 @@ export function createAdminAssignmentsModule() {
           classes.push("assignment-badge--status-neutral");
           break;
       }
-      return classes.join("");
+      return classes.join(" ");
     },
 
     assignmentHandlingBadgeClass(item) {
@@ -588,18 +603,54 @@ export function createAdminAssignmentsModule() {
       return item?.needs_attention ?"标记已处理" :"取消已处理";
     },
 
+    assignmentRouteFilterChips() {
+      const chips = [];
+      const status = String(this.filters.assignments?.status ||"").trim();
+      const handling = String(this.filters.assignments?.handling ||"").trim();
+      const sourceKind = String(this.filters.assignments?.source_kind ||"").trim();
+      const statusLabels = {
+        invited:"已邀约",
+        verified:"已验证",
+        in_quiz:"答题中",
+        grading:"判卷中",
+        finished:"已完成",
+      };
+      if (sourceKind) {
+        chips.push({ key:"source_kind", label: sourceKind ==="public" ?"公开" :"定向" });
+      }
+      if (status) {
+        chips.push({ key:"status", label: statusLabels[status] || status });
+      }
+      if (handling) {
+        chips.push({ key:"handling", label: handling ==="unhandled" ?"未处理" :"已处理" });
+      }
+      return chips;
+    },
+
+    async clearAssignmentRouteFilter(key) {
+      const target = String(key ||"").trim();
+      if (!["status","handling","source_kind"].includes(target)) return;
+      this.filters.assignments[target] ="";
+      await this.reloadAssignmentsFromFirstPage();
+    },
+
+    async clearAssignmentRouteFilters() {
+      this.filters.assignments.status ="";
+      this.filters.assignments.handling ="";
+      this.filters.assignments.source_kind ="";
+      await this.reloadAssignmentsFromFirstPage();
+    },
+
     assignmentActionButtonClass(kind, item) {
       const classes = ["assignment-action"];
-      if (kind ==="detail") {
-        classes.push("assignment-action--primary");
-      } else if (kind ==="danger") {
+      if (kind ==="danger") {
         classes.push("assignment-action--danger");
       } else if (kind ==="handling" && item?.needs_attention) {
         classes.push("assignment-action--warning");
       } else {
         classes.push("assignment-action--secondary");
       }
-      return classes.join("");
+      return classes.join(" ");
     },
 
     assignmentHandledMeta(item) {
@@ -939,6 +990,9 @@ export function createAdminAssignmentsModule() {
       if (this.filters.assignments.quiz_key) query.set("quiz_key", this.filters.assignments.quiz_key);
       if (this.filters.assignments.start_from) query.set("start_from", this.filters.assignments.start_from);
       if (this.filters.assignments.end_to) query.set("end_to", this.filters.assignments.end_to);
+      if (this.filters.assignments.status) query.set("status", this.filters.assignments.status);
+      if (this.filters.assignments.handling) query.set("handling", this.filters.assignments.handling);
+      if (this.filters.assignments.source_kind) query.set("source_kind", this.filters.assignments.source_kind);
       const previousSnapshot = { ...(this.assignmentStatusSnapshot || {}) };
       const data = await this.api(`/api/admin/assignments?${query.toString()}`, { quiet });
       if (!data) return;

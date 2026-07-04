@@ -130,8 +130,8 @@ export function createAdminQuizzesModule() {
     publicInviteMaterialButtonClass(value) {
       const active = this.publicInviteMaterialMode() === value;
       return active
-        ?"border-emerald-300/80 bg-white/95 text-emerald-700 shadow-[0_6px_16px_rgba(22,163,74,0.12)]"
-        :"border-transparent text-slate-700 hover:border-blue-200/80 hover:bg-white/65 hover:text-slate-900";
+        ?"admin-public-invite__control--active"
+        :"admin-public-invite__control--inactive";
     },
 
     publicInviteIgnoreTiming() {
@@ -140,8 +140,8 @@ export function createAdminQuizzesModule() {
 
     publicInviteIgnoreTimingButtonClass() {
       return this.publicInviteIgnoreTiming()
-        ?"border-amber-300/85 bg-amber-50/85 text-amber-800 shadow-[0_6px_16px_rgba(217,119,6,0.10)]"
-        :"border-blue-300/70 bg-white/35 text-slate-700 hover:bg-white/70 hover:text-slate-900";
+        ?"admin-public-invite__control--warn-active"
+        :"admin-public-invite__control--inactive";
     },
 
     applyPublicInviteResult(result) {

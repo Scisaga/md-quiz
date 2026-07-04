@@ -10,12 +10,32 @@ from . import admin as shared
 
 router = APIRouter()
 
+_ASSIGNMENT_STATUS_FILTERS = {"invited", "verified", "in_quiz", "grading", "finished"}
+
+
+def _assignment_status_filter(raw: str) -> str:
+    value = str(raw or "").strip().lower()
+    return value if value in _ASSIGNMENT_STATUS_FILTERS else ""
+
+
+def _assignment_handling_filter(raw: str) -> str:
+    value = str(raw or "").strip().lower()
+    return value if value in {"unhandled", "handled"} else ""
+
+
+def _assignment_source_filter(raw: str) -> str:
+    value = str(raw or "").strip().lower()
+    return value if value in {"public", "direct"} else ""
+
 
 @router.get("/assignments")
 def get_assignments(
     request: Request,
     q: str = "",
     quiz_key: str = "",
+    status: str = "",
+    handling: str = "",
+    source_kind: str = "",
     start_from: str = "",
     start_to: str = "",
     end_from: str = "",
@@ -29,28 +49,43 @@ def get_assignments(
     invite_end_from = str(end_from or "").strip() or None
     invite_end_to = str(end_to or "").strip() or None
     quiz_key_filter = str(quiz_key or "").strip() or None
+    status_filter = _assignment_status_filter(status)
+    handling_filter = _assignment_handling_filter(handling)
+    source_kind_filter = _assignment_source_filter(source_kind)
     total = shared.deps.count_quiz_papers(
         query=q or None,
         quiz_key=quiz_key_filter,
+        status=status_filter or None,
+        handling=handling_filter or None,
+        source_kind=source_kind_filter or None,
         invite_start_from=invite_start_from,
         invite_start_to=invite_start_to,
         invite_end_from=invite_end_from,
         invite_end_to=invite_end_to,
     )
-    unhandled_finished_count = shared.deps.count_unhandled_finished_quiz_papers(
-        query=q or None,
-        quiz_key=quiz_key_filter,
-        invite_start_from=invite_start_from,
-        invite_start_to=invite_start_to,
-        invite_end_from=invite_end_from,
-        invite_end_to=invite_end_to,
-    )
+    if status_filter and status_filter != "finished":
+        unhandled_finished_count = 0
+    elif handling_filter == "handled":
+        unhandled_finished_count = 0
+    else:
+        unhandled_finished_count = shared.deps.count_unhandled_finished_quiz_papers(
+            query=q or None,
+            quiz_key=quiz_key_filter,
+            source_kind=source_kind_filter or None,
+            invite_start_from=invite_start_from,
+            invite_start_to=invite_start_to,
+            invite_end_from=invite_end_from,
+            invite_end_to=invite_end_to,
+        )
     total_pages = max(1, (total + per_page - 1) // per_page)
     current_page = max(1, min(int(page or 1), total_pages))
     offset = (current_page - 1) * per_page
     rows = shared.deps.list_quiz_papers(
         query=q or None,
         quiz_key=quiz_key_filter,
+        status=status_filter or None,
+        handling=handling_filter or None,
+        source_kind=source_kind_filter or None,
         invite_start_from=invite_start_from,
         invite_start_to=invite_start_to,
         invite_end_from=invite_end_from,
@@ -70,6 +105,9 @@ def get_assignments(
         "filters": {
             "q": str(q or "").strip(),
             "quiz_key": quiz_key_filter or "",
+            "status": status_filter,
+            "handling": handling_filter,
+            "source_kind": source_kind_filter,
             "start_from": start_from,
             "start_to": start_to,
             "end_from": end_from,

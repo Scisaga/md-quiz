@@ -22,7 +22,7 @@
         <p class="admin-r-subtitle">候选人档案、资料入库和答题记录入口。</p>
       </div>
       <span class="admin-r-pill admin-r-pill--info">
-        <span x-text="(candidates.items || []).length"></span>
+        <span x-text="Number(candidates.total ?? (candidates.items || []).length)"></span>
         <span>人</span>
       </span>
     </header>
@@ -42,27 +42,67 @@
       </label>
     </div>
 
-    <div class="overflow-x-auto">
-      <div class="admin-r-table-head min-w-[640px] grid-cols-[minmax(12rem,1fr)_7rem_11rem_2rem] gap-3">
-        <span>姓名</span>
+    <div class="admin-r-responsive-list admin-r-responsive-list--candidates">
+      <div class="admin-r-table-head admin-r-responsive-list__head">
+        <span>候选人</span>
+        <span>统计</span>
+        <span>最近答题</span>
         <span>资料</span>
         <span>创建时间</span>
         <span></span>
       </div>
-      <div class="min-w-[640px]">
+      <div class="admin-r-responsive-list__body">
         <template x-for="item in candidates.items" :key="item.id">
-          <button type="button" @click="go('/admin/candidates/' + item.id)" class="admin-r-row grid-cols-[minmax(12rem,1fr)_7rem_11rem_2rem] items-center gap-3">
-            <span class="min-w-0">
-              <span class="admin-r-row-title" x-text="item.name"></span>
-              <span class="admin-r-row-meta admin-r-code" x-text="item.phone"></span>
+          <div
+            @click="go('/admin/candidates/' + item.id)"
+            @keydown.enter.prevent="go('/admin/candidates/' + item.id)"
+            @keydown.space.prevent="go('/admin/candidates/' + item.id)"
+            role="button"
+            tabindex="0"
+            class="admin-r-row admin-r-responsive-list__row cursor-pointer"
+          >
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--candidate">
+              <span class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span class="admin-r-row-title" x-text="item.name"></span>
+                <span class="text-[13px] font-normal leading-5 tracking-normal text-slate-500" x-text="item.phone"></span>
+              </span>
             </span>
-            <span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--stats">
+              <span class="text-sm leading-6 tracking-normal text-slate-500">
+                <span class="text-blue-600">
+                  <span>答题</span>
+                  <span x-text="Number(item.attempt_count || 0)"></span>
+                </span>
+                <span class="mx-1.5 text-slate-300">/</span>
+                <span>
+                  <span>邀约</span>
+                  <span x-text="Number(item.invite_count || 0)"></span>
+                </span>
+              </span>
+            </span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--latest">
+              <button
+                x-show="candidateLatestAttempt(item)"
+                @click.stop="openCandidateLatestAttempt(item)"
+                @keydown.enter.stop
+                @keydown.space.stop
+                type="button"
+                class="admin-r-pill admin-r-pill--info admin-r-responsive-list__pill-link"
+              >
+                <span class="truncate" x-text="candidateLatestAttemptLabel(item)"></span>
+              </button>
+              <span x-show="!candidateLatestAttempt(item)" class="text-xs text-slate-400">暂无答题</span>
+              <span x-show="candidateLatestAttempt(item)" class="mt-1 block truncate admin-r-code" x-text="candidateLatestAttemptMeta(item)"></span>
+            </span>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--material">
               <span x-show="item.has_resume" class="admin-r-pill admin-r-pill--ok">有简历</span>
               <span x-show="!item.has_resume" class="admin-r-pill">未入库</span>
             </span>
-            <span class="admin-r-code tabular-nums" x-text="formatDateTime(item.created_at)"></span>
-            <span class="material-symbols-rounded text-[18px] text-slate-400">chevron_right</span>
-          </button>
+            <span class="admin-r-responsive-list__cell admin-r-responsive-list__cell--created">
+              <span class="admin-r-code tabular-nums" x-text="formatDateTime(item.created_at)"></span>
+            </span>
+            <span class="admin-r-responsive-list__chevron material-symbols-rounded text-[18px] text-slate-400">chevron_right</span>
+          </div>
         </template>
       </div>
       <div x-show="!(candidates.items || []).length" class="admin-r-empty">当前没有候选人</div>

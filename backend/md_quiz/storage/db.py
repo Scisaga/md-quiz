@@ -907,35 +907,85 @@ def list_candidates(
     # 查询的sql语句
     sql = """
  SELECT
-   id,
-   name,
-   phone,
-   created_at,
-    (resume_bytes IS NOT NULL) AS has_resume
-  FROM candidate
- WHERE deleted_at IS NULL
+   c.id,
+   c.name,
+   c.phone,
+   c.created_at,
+   (c.resume_bytes IS NOT NULL) AS has_resume,
+   COALESCE(candidate_stats.invite_count, 0) AS invite_count,
+   COALESCE(candidate_stats.attempt_count, 0) AS attempt_count,
+   latest_attempt.token AS latest_attempt_token,
+   latest_attempt.quiz_key AS latest_attempt_quiz_key,
+   latest_attempt.quiz_title AS latest_attempt_quiz_title,
+   latest_attempt.status AS latest_attempt_status,
+   latest_attempt.entered_at AS latest_attempt_entered_at,
+   latest_attempt.finished_at AS latest_attempt_finished_at
+  FROM candidate c
+  LEFT JOIN LATERAL (
+    SELECT
+      COUNT(*)::int AS invite_count,
+      COUNT(*) FILTER (
+        WHERE ep.entered_at IS NOT NULL
+           OR ep.status IN ('in_quiz'::quiz_paper_status, 'grading'::quiz_paper_status, 'finished'::quiz_paper_status)
+      )::int AS attempt_count
+    FROM quiz_paper ep
+    WHERE ep.candidate_id = c.id
+  ) candidate_stats ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT
+      ep.token,
+      ep.quiz_key,
+      COALESCE(
+        NULLIF(qd.spec->>'title', ''),
+        NULLIF(qv.spec->>'title', ''),
+        NULLIF(qv.title, ''),
+        NULLIF(qd.title, ''),
+        ep.quiz_key
+      ) AS quiz_title,
+      ep.status::text AS status,
+      ep.entered_at,
+      ep.finished_at
+    FROM quiz_paper ep
+    LEFT JOIN quiz_version qv ON qv.id = ep.quiz_version_id
+    LEFT JOIN quiz_definition qd ON qd.quiz_key = ep.quiz_key
+    WHERE ep.candidate_id = c.id
+      AND (
+        ep.entered_at IS NOT NULL
+        OR ep.status IN ('in_quiz'::quiz_paper_status, 'grading'::quiz_paper_status, 'finished'::quiz_paper_status)
+      )
+    ORDER BY COALESCE(ep.finished_at, ep.entered_at, ep.updated_at) DESC, ep.id DESC
+    LIMIT 1
+  ) latest_attempt ON TRUE
+ WHERE c.deleted_at IS NULL
    """
     params: list[Any] = []      # 最多返回多少条
     where_sql, where_params = _candidate_query_where_clause(query)
     if where_sql:
         # _candidate_query_where_clause returns a " WHERE ..." fragment; we already have a base WHERE.
-        sql += " AND " + where_sql.strip().removeprefix("WHERE").removeprefix("where").strip()
+        condition = where_sql.strip().removeprefix("WHERE").removeprefix("where").strip()
+        condition = (
+            condition
+            .replace("phone LIKE", "c.phone LIKE")
+            .replace("name ILIKE", "c.name ILIKE")
+            .replace("id =", "c.id =")
+        )
+        sql += " AND " + condition
         params.extend(where_params)
 
     if created_from is not None:
         if " WHERE " in sql:
-            sql += " AND created_at >= %s"
+            sql += " AND c.created_at >= %s"
         else:
-            sql += " WHERE created_at >= %s"
+            sql += " WHERE c.created_at >= %s"
         params.append(created_from)
     if created_to is not None:
         if " WHERE " in sql:
-            sql += " AND created_at <= %s"
+            sql += " AND c.created_at <= %s"
         else:
-            sql += " WHERE created_at <= %s"
+            sql += " WHERE c.created_at <= %s"
         params.append(created_to)
 
-    sql += "\nORDER BY id DESC\n"   # 按照id倒序输出
+    sql += "\nORDER BY c.id DESC\n"   # 按照id倒序输出
     # 将限制的limit的数量传到数据库中
     if limit is not None:
         sql += " LIMIT %s"
@@ -2813,6 +2863,13 @@ def get_quiz_paper_admin_detail_by_token(token: str) -> dict[str, Any] | None:
     c.deleted_at AS candidate_deleted_at,
     ep.phone,
     ep.quiz_key,
+    COALESCE(
+      NULLIF(qd.spec->>'title', ''),
+      NULLIF(qv.spec->>'title', ''),
+      NULLIF(qv.title, ''),
+      NULLIF(qd.title, ''),
+      ep.quiz_key
+    ) AS quiz_title,
     ep.quiz_version_id,
     ep.token,
     ep.source_kind,
@@ -2827,6 +2884,8 @@ def get_quiz_paper_admin_detail_by_token(token: str) -> dict[str, Any] | None:
     ep.created_at
  FROM quiz_paper ep
  JOIN candidate c ON c.id = ep.candidate_id
+ LEFT JOIN quiz_version qv ON qv.id = ep.quiz_version_id
+ LEFT JOIN quiz_definition qd ON qd.quiz_key = ep.quiz_key
  WHERE ep.token=%s
  LIMIT 1
  """
@@ -2961,6 +3020,9 @@ def list_quiz_papers(
     *,
     query: str | None = None,
     quiz_key: str | None = None,
+    status: str | None = None,
+    handling: str | None = None,
+    source_kind: str | None = None,
     invite_start_from: str | None = None,
     invite_start_to: str | None = None,
     invite_end_from: str | None = None,
@@ -2976,6 +3038,13 @@ def list_quiz_papers(
      c.deleted_at AS candidate_deleted_at,
      ep.phone,
      ep.quiz_key,
+     COALESCE(
+       NULLIF(qd.spec->>'title', ''),
+       NULLIF(qv.spec->>'title', ''),
+       NULLIF(qv.title, ''),
+       NULLIF(qd.title, ''),
+       ep.quiz_key
+     ) AS quiz_title,
      ep.quiz_version_id,
      ep.token,
      ep.source_kind,
@@ -2990,6 +3059,8 @@ def list_quiz_papers(
      ep.created_at
   FROM quiz_paper ep
   JOIN candidate c ON c.id = ep.candidate_id
+  LEFT JOIN quiz_version qv ON qv.id = ep.quiz_version_id
+  LEFT JOIN quiz_definition qd ON qd.quiz_key = ep.quiz_key
   """
     params: list[Any] = []
     where: list[str] = []
@@ -2997,6 +3068,21 @@ def list_quiz_papers(
     if quiz_key_value:
         where.append("ep.quiz_key = %s")
         params.append(quiz_key_value)
+    source_kind_value = str(source_kind or "").strip().lower()
+    if source_kind_value in {"public", "direct"}:
+        where.append("ep.source_kind = %s")
+        params.append(source_kind_value)
+    status_value = str(status or "").strip().lower()
+    if status_value in {"invited", "verified", "in_quiz", "grading", "finished"}:
+        where.append("ep.status = %s::quiz_paper_status")
+        params.append(status_value)
+    handling_value = str(handling or "").strip().lower()
+    if handling_value == "unhandled":
+        where.append("ep.status = 'finished'::quiz_paper_status")
+        where.append("ep.handled_at IS NULL")
+    elif handling_value == "handled":
+        where.append("ep.status = 'finished'::quiz_paper_status")
+        where.append("ep.handled_at IS NOT NULL")
     q = str(query or "").strip()
     if q:
         ql = f"%{q}%"
@@ -3984,6 +4070,9 @@ def count_quiz_papers(
     *,
     query: str | None = None,
     quiz_key: str | None = None,
+    status: str | None = None,
+    handling: str | None = None,
+    source_kind: str | None = None,
     invite_start_from: str | None = None,
     invite_start_to: str | None = None,
     invite_end_from: str | None = None,
@@ -4000,6 +4089,21 @@ def count_quiz_papers(
     if quiz_key_value:
         where.append("ep.quiz_key = %s")
         params.append(quiz_key_value)
+    source_kind_value = str(source_kind or "").strip().lower()
+    if source_kind_value in {"public", "direct"}:
+        where.append("ep.source_kind = %s")
+        params.append(source_kind_value)
+    status_value = str(status or "").strip().lower()
+    if status_value in {"invited", "verified", "in_quiz", "grading", "finished"}:
+        where.append("ep.status = %s::quiz_paper_status")
+        params.append(status_value)
+    handling_value = str(handling or "").strip().lower()
+    if handling_value == "unhandled":
+        where.append("ep.status = 'finished'::quiz_paper_status")
+        where.append("ep.handled_at IS NULL")
+    elif handling_value == "handled":
+        where.append("ep.status = 'finished'::quiz_paper_status")
+        where.append("ep.handled_at IS NOT NULL")
     q = str(query or "").strip()
     if q:
         ql = f"%{q}%"
@@ -4029,6 +4133,7 @@ def count_unhandled_finished_quiz_papers(
     *,
     query: str | None = None,
     quiz_key: str | None = None,
+    source_kind: str | None = None,
     invite_start_from: str | None = None,
     invite_start_to: str | None = None,
     invite_end_from: str | None = None,
@@ -4045,6 +4150,10 @@ def count_unhandled_finished_quiz_papers(
     if quiz_key_value:
         where.append("ep.quiz_key = %s")
         params.append(quiz_key_value)
+    source_kind_value = str(source_kind or "").strip().lower()
+    if source_kind_value in {"public", "direct"}:
+        where.append("ep.source_kind = %s")
+        params.append(source_kind_value)
     q = str(query or "").strip()
     if q:
         ql = f"%{q}%"

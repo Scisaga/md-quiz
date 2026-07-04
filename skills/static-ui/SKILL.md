@@ -221,6 +221,7 @@ static/
   * 多选：优先使用 tag select 控件（“已选标签 + 搜索输入 + 下拉选项”），而不是原生 multi-select；需支持 Enter 添加第一个匹配项、Backspace 删除最后一个 tag、Esc 关闭下拉；窄屏可换行（flex-wrap）且不溢出（max-w-full）
   * 列表/表格：优先用 divide-y divide-slate-800；行 p-4 hover:bg-slate-900/50；空状态/加载态需要占位（如 暂无数据、加载中…）
   * 徽标/状态：pill badge 统一 rounded-full border bg-slate-950/30 text-[11px]；状态点用小圆点 + 文本
+  * pill badge 内的 Material Symbols 必须小于或等于文字高度，图标盒子使用约 `0.92em` 字号、`0.92em` 宽高和 `line-height: 1`；后台统一使用 `.admin-r-pill__icon` 或等价组件类，并确保覆盖 Material Symbols 默认 `24px`。禁止在 pill 内用 `text-[14px]`、`text-[15px]`、`text-base` 等固定字号，因为这会撑高标签并破坏行高。
   * 弹窗：遮罩 bg-black/60；内容容器 rounded-lg border border-slate-800 bg-slate-900 shadow-lg p-4
 * 交互细节：
 
@@ -235,6 +236,7 @@ static/
 
   * 统一使用 Material Symbols（同一套风格/笔画/尺寸），禁止运行时从 CDN 加载
   * 推荐用自托管字体 + ligature 方式（如 <span class="material-symbols-rounded">settings</span>），并用 Tailwind 控制大小与对齐（如 text-[20px] leading-none）
+  * 图标放在标签、徽标、状态 pill 内时不按按钮图标规则放大；它必须服从文字字号，使用不超过 `1em` 的尺寸，不得改变 pill 高度。
 
 ### Material Symbols 使用约定
 

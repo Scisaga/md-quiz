@@ -15,6 +15,7 @@
 - 修改 QML 解析或试题生成时，同时核对 `skills/qml-authoring/references/qml-spec.md`、`skills/qml-authoring/references/parser-truth.md`、`backend/md_quiz/parsers/qml.py`、`skills/qml-authoring/` 和相关测试。
 - 修改 quiz 仓库同步、资源路径或 manifest 规则时，同时核对 `skills/quiz-repo-spec/`、`backend/md_quiz/services/exam_repo_sync_service.py` 和相关测试。
 - 涉及 LLM、短信、号码认证时，优先保证“未配置时失败可解释、已配置时行为清晰”。
+- 涉及标签、徽标、状态 pill 等内联小组件时，图标尺寸必须跟随文字且不超过文字高度，不要使用固定大字号或独立行高把标签撑高；注意 Material Symbols 默认 `24px` 必须被组件规则覆盖。
 
 ## 测试与验证
 

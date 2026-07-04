@@ -457,6 +457,34 @@ export function createAdminCandidatesModule() {
       input.click();
     },
 
+    candidateLatestAttempt(item) {
+      const attempt = item?.latest_attempt;
+      return attempt && typeof attempt ==="object" ? attempt : null;
+    },
+
+    candidateLatestAttemptLabel(item) {
+      const attempt = this.candidateLatestAttempt(item);
+      if (!attempt) return"暂无答题";
+      return String(attempt.quiz_title || attempt.quiz_key ||"最近答题").trim() ||"最近答题";
+    },
+
+    candidateLatestAttemptMeta(item) {
+      const attempt = this.candidateLatestAttempt(item);
+      if (!attempt) return"";
+      const time = this.formatDateTime(attempt.finished_at || attempt.entered_at);
+      return [
+        String(attempt.quiz_key ||"").trim(),
+        String(attempt.status_label ||"").trim(),
+        time,
+      ].filter(Boolean).join(" · ");
+    },
+
+    async openCandidateLatestAttempt(item) {
+      const token = String(this.candidateLatestAttempt(item)?.token ||"").trim();
+      if (!token) return;
+      await this.go(`/admin/attempt/${encodeURIComponent(token)}`);
+    },
+
     async loadCandidates({ quiet = false } = {}) {
       const query = new URLSearchParams();
       if (this.filters.candidates.q) query.set("q", this.filters.candidates.q);
