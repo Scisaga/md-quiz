@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _method_source(source: str, name: str) -> str:
-    pattern = re.compile(rf"\n    {re.escape(name)}\([^)]*\) \{{(?P<body>.*?)\n    \}},", re.S)
+    pattern = re.compile(rf"\n    (?:async\s+)?{re.escape(name)}\([^)]*\) \{{(?P<body>.*?)\n    \}},", re.S)
     match = pattern.search(source)
     assert match, f"method not found: {name}"
     return match.group("body")
@@ -54,10 +54,44 @@ def test_admin_shell_assets_are_cache_busted_together() -> None:
     admin_index = (ROOT / "static" / "admin" / "index.html").read_text(encoding="utf-8")
     admin_app = (ROOT / "static" / "admin" / "app.js").read_text(encoding="utf-8")
 
-    version = "20260704-admin-breadcrumbs-current-type-csspattern-bg"
+    version = "20260707-hermes-logo-crop"
     assert f'href="/static/admin.css?v={version}"' in admin_index
     assert f'src="/static/admin/app.js?v={version}"' in admin_index
     assert f'./modules/pages/assignments.js?v={version}' in admin_app
+
+
+def test_admin_topbar_user_menu_owns_logout_action() -> None:
+    index_source = (ROOT / "static" / "admin" / "index.html").read_text(encoding="utf-8")
+    state_source = (ROOT / "static" / "admin" / "modules" / "state.js").read_text(encoding="utf-8")
+    shell_source = (ROOT / "static" / "admin" / "modules" / "shell.js").read_text(encoding="utf-8")
+    router_source = (ROOT / "static" / "admin" / "modules" / "router.js").read_text(encoding="utf-8")
+    shell_css_source = (ROOT / "static" / "assets" / "css" / "admin" / "shell.css").read_text(encoding="utf-8")
+    responsive_css_source = (ROOT / "static" / "assets" / "css" / "admin" / "responsive.css").read_text(encoding="utf-8")
+
+    assert 'class="admin-r-user-menu"' in index_source
+    assert '@click.outside="closeUserMenu"' in index_source
+    assert '@keydown.escape.window="closeUserMenu"' in index_source
+    assert 'aria-haspopup="menu"' in index_source
+    assert ':aria-expanded="userMenuOpen ? \'true\' : \'false\'"' in index_source
+    assert 'role="menu"' in index_source
+    assert 'role="menuitem"' in index_source
+    assert "个人中心" in index_source
+    assert index_source.count("退出登录") == 1
+    assert "admin-r-sidebar-tools" not in index_source
+    assert "admin-r-mobile-logout" not in index_source
+
+    assert "userMenuOpen: false" in state_source
+    assert "toggleUserMenu()" in shell_source
+    assert "closeUserMenu()" in shell_source
+    assert "this.closeUserMenu();" in _method_source(shell_source, "logout")
+    assert 'if (typeof this.closeUserMenu === "function")' in router_source
+
+    assert ".admin-r-user-menu__button" in shell_css_source
+    assert ".admin-r-user-menu__panel" in shell_css_source
+    assert "admin-r-sidebar-tool" not in shell_css_source
+    assert "admin-r-mobile-logout" not in shell_css_source
+    assert "admin-r-user-menu__panel" in responsive_css_source
+    assert "admin-r-mobile-logout" not in responsive_css_source
 
 
 def test_admin_topbar_uses_breadcrumbs_for_detail_routes() -> None:

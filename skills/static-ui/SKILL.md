@@ -237,6 +237,9 @@ static/
   * 统一使用 Material Symbols（同一套风格/笔画/尺寸），禁止运行时从 CDN 加载
   * 推荐用自托管字体 + ligature 方式（如 <span class="material-symbols-rounded">settings</span>），并用 Tailwind 控制大小与对齐（如 text-[20px] leading-none）
   * 图标放在标签、徽标、状态 pill 内时不按按钮图标规则放大；它必须服从文字字号，使用不超过 `1em` 的尺寸，不得改变 pill 高度。
+  * 品牌/客户端 logo 不等同于 Material Symbols：需要展示真实产品图标时，优先使用项目已有本地资产、官方资源或可信图标库的原始 PNG/SVG；禁止用搜索结果缩略图 URL（如 `encrypted-tbn0.gstatic.com`）、AI 生成图、凭印象手绘 SVG 或相似但不相关的图标替代。
+  * 新增位图 logo 前必须确认：文件确实是目标格式（PNG/JPEG/WebP 等）、分辨率足够、外框/水印/多余留白已处理、透明背景或白底符合页面容器；落库后用本地路径引用，并同步 bump 相关静态资源版本，避免浏览器继续加载旧图。
+  * logo 在卡片、列表或配置面板中展示时，需明确设置稳定宽高和 `bg-contain bg-center` 或等价的 `object-contain object-center`；如果图标与标题/说明并排，默认垂直居中，避免视觉上偏上、过小或被外框挤占。
 
 ### Material Symbols 使用约定
 
@@ -263,6 +266,8 @@ static/
 
 * 资源引用必须为本地资源（不可 CDN），并与目录结构一致（不要写成 `/static/...` 这种不存在的路径）
 * Material Symbols 必须自托管（`assets/css/material-symbols.css` + `assets/fonts/*.woff2`）
+* 新增或替换第三方品牌/logo 资源时，必须记录并核对原始来源，下载原始文件到本地静态目录；不要把搜索引擎缩略图、临时外链或生成图当作最终资产。
+* 新增 logo 后至少做一次视觉验收：确认图案主体足够大、居中、无意外黑框/白边/水印，且在桌面和窄屏容器内不挤压文字、不造成布局跳动。
 * 若项目存在 `docs/ui/theme.md`，验收时配色应以该文档为准；本 skill 中的配色表仅作为默认值
 
 ### 路由与 App Shell

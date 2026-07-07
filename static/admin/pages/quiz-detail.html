@@ -67,10 +67,12 @@
       <div class="admin-public-invite__main">
         <div class="min-w-0 flex-1">
           <div class="admin-r-label">公开链接</div>
-          <div class="admin-public-invite__controls" role="radiogroup" aria-label="公开邀约资料采集">
-            <template x-for="option in publicInviteMaterialOptions()" :key="option.value">
-              <button type="button" role="radio" @click="setPublicInviteMaterialMode(option.value)" :aria-checked="String(publicInviteMaterialMode() === option.value)" :class="publicInviteMaterialButtonClass(option.value)" class="admin-public-invite__control" x-text="option.label"></button>
-            </template>
+          <div class="admin-public-invite__controls">
+            <div class="admin-public-invite__material-group" role="radiogroup" aria-label="公开邀约资料采集">
+              <template x-for="option in publicInviteMaterialOptions()" :key="option.value">
+                <button type="button" role="radio" @click="setPublicInviteMaterialMode(option.value)" :aria-checked="String(publicInviteMaterialMode() === option.value)" :class="publicInviteMaterialButtonClass(option.value)" class="admin-public-invite__control admin-public-invite__material-control" x-text="option.label"></button>
+              </template>
+            </div>
             <button type="button" role="switch" @click="setPublicInviteIgnoreTiming(!publicInviteIgnoreTiming())" :aria-checked="String(publicInviteIgnoreTiming())" :class="publicInviteIgnoreTimingButtonClass()" class="admin-public-invite__control">
               <span class="material-symbols-rounded admin-public-invite__control-icon" x-text="publicInviteIgnoreTiming() ? 'timer_off' : 'timer'"></span>
               <span>忽略计时</span>

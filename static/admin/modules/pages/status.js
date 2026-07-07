@@ -155,13 +155,13 @@ export function createAdminStatusModule() {
     mcpClientConfigs() {
       const url = this.mcpUrl() ||"https://your-host.example.com/mcp";
       const tokenPlaceholder ="<上方 Bearer Token>";
-      const iconUrl = (path) => this.absoluteUrl(`${path}?v=20260406b`);
+      const iconUrl = (path) => this.absoluteUrl(`${path}?v=20260707-hermes-logo-crop`);
       return [
         {
-          key:"openclaw",
-          label:"OpenClaw",
-          icon: iconUrl("/static/assets/img/brands/openclaw.svg"),
-          location:"OpenClaw 配置里的 `mcp.servers`，也可用 `openclaw mcp set` 写入。",
+          key:"hermes",
+          label:"Hermes",
+          icon: iconUrl("/static/assets/img/brands/hermes.png"),
+          location:"Hermes 配置里的 `mcp.servers`，也可用 `hermes mcp set` 写入。",
           format:"json",
           snippet: JSON.stringify(
             {

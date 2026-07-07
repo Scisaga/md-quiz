@@ -6,16 +6,15 @@
     <title>MD Quiz Admin</title>
     <link rel="icon" type="image/png" href="/static/logo.png" />
     <link href="/static/assets/css/material-symbols.css" rel="stylesheet" />
-    <link href="/static/admin.css?v=20260704-admin-breadcrumbs-current-type-csspattern-bg" rel="stylesheet" />
+    <link href="/static/admin.css?v=20260707-hermes-logo-crop" rel="stylesheet" />
     <script defer src="/static/assets/js/math-render.js"></script>
     <script defer src="/static/assets/js/vendor/mathjax/tex-svg.js"></script>
     <script defer src="/static/vendor/lightweight-charts/lightweight-charts.standalone.production.js"></script>
-    <script type="module" src="/static/admin/app.js?v=20260704-admin-breadcrumbs-current-type-csspattern-bg"></script>
+    <script type="module" src="/static/admin/app.js?v=20260707-hermes-logo-crop"></script>
     <script defer src="/static/assets/js/alpine.min.js"></script>
   </head>
   <body x-data="adminApp()" x-init="boot()" class="admin-r-document">
     <div class="admin-r-bg" aria-hidden="true"></div>
-
     <div x-cloak x-show="booting" class="admin-r-loading">
       <div class="admin-r-loading__panel">
         <span class="material-symbols-rounded admin-r-loading__icon">progress_activity</span>
@@ -24,7 +23,7 @@
     </div>
 
     <main class="admin-r-root" x-cloak>
-      <section x-show="!session.authenticated" x-cloak>
+      <section x-show="!session.authenticated" x-cloak class="admin-r-login-frame">
         <div x-ref="loginMount"></div>
       </section>
 
@@ -87,19 +86,6 @@
               </button>
             </template>
           </nav>
-
-          <div class="admin-r-sidebar-tools">
-            <button
-              type="button"
-              @click="logout"
-              class="admin-r-sidebar-tool"
-              aria-label="退出登录"
-              title="退出登录"
-            >
-              <span class="material-symbols-rounded">logout</span>
-              <span class="admin-r-sidebar-label">退出登录</span>
-            </button>
-          </div>
         </aside>
 
         <section class="admin-r-stage">
@@ -139,19 +125,50 @@
                 <span class="admin-r-health-pill__dot"></span>
                 <span x-text="dashboardSystemLevelLabel ? dashboardSystemLevelLabel() : (statusSummary.overall_level || 'ok')"></span>
               </div>
-              <div class="admin-r-user-pill">
-                <span>用户</span>
-                <span class="admin-r-user-name" x-text="session.username || 'admin'"></span>
-              </div>
-              <button
-                x-show="isAdminCompactLayout"
-                type="button"
-                @click="logout"
-                class="admin-r-mobile-logout"
-                aria-label="退出登录"
+              <div
+                class="admin-r-user-menu"
+                @click.outside="closeUserMenu"
+                @keydown.escape.window="closeUserMenu"
               >
-                <span class="material-symbols-rounded">logout</span>
-              </button>
+                <button
+                  type="button"
+                  @click="toggleUserMenu"
+                  class="admin-r-user-menu__button"
+                  aria-haspopup="menu"
+                  aria-controls="admin-user-menu-panel"
+                  :aria-expanded="userMenuOpen ? 'true' : 'false'"
+                >
+                  <span class="material-symbols-rounded admin-r-user-menu__avatar" aria-hidden="true">account_circle</span>
+                  <span class="admin-r-user-menu__text">
+                    <span class="admin-r-user-menu__label">用户</span>
+                    <span class="admin-r-user-name" x-text="session.username || 'admin'"></span>
+                  </span>
+                  <span class="material-symbols-rounded admin-r-user-menu__chevron" aria-hidden="true" x-text="userMenuOpen ? 'expand_less' : 'expand_more'"></span>
+                </button>
+                <div
+                  id="admin-user-menu-panel"
+                  x-show="userMenuOpen"
+                  x-cloak
+                  x-transition
+                  class="admin-r-user-menu__panel"
+                  role="menu"
+                  aria-label="个人中心菜单"
+                >
+                  <div class="admin-r-user-menu__header" role="none">
+                    <span class="admin-r-user-menu__eyebrow">个人中心</span>
+                    <span class="admin-r-user-menu__account" x-text="session.username || 'admin'"></span>
+                  </div>
+                  <button
+                    type="button"
+                    @click="logout"
+                    class="admin-r-user-menu__item admin-r-user-menu__item--danger"
+                    role="menuitem"
+                  >
+                    <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+                    <span>退出登录</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </header>
 

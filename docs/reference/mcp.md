@@ -23,7 +23,7 @@
 说明：
 
 - `MCP_CORS_ALLOW_ORIGINS` 只在浏览器型 MCP 客户端需要跨域访问时设置
-- `OpenClaw`、`VS Code`、`Codex` 这类本地桌面/CLI 客户端通常不需要额外配置 CORS
+- `Hermes`、`VS Code`、`Codex` 这类本地桌面/CLI 客户端通常不需要额外配置 CORS
 
 ## 工具清单
 
@@ -99,14 +99,14 @@
 - MCP 地址：`https://your-host.example.com/mcp`
 - Bearer Token：从后台 `/admin/mcp` 页面复制
 
-### OpenClaw
+### Hermes
 
-OpenClaw 管理远程 MCP 定义时，核心字段是 `url`、`transport="streamable-http"` 与 `headers.Authorization`。
+Hermes 管理远程 MCP 定义时，核心字段是 `url`、`transport="streamable-http"` 与 `headers.Authorization`。
 
-可直接写入 OpenClaw 配置里的 `mcp.servers`，也可用命令行保存：
+可直接写入 Hermes 配置里的 `mcp.servers`，也可用命令行保存：
 
 ```bash
-openclaw mcp set mdQuiz '{
+hermes mcp set mdQuiz '{
   "url": "https://your-host.example.com/mcp",
   "transport": "streamable-http",
   "headers": {

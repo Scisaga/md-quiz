@@ -64,6 +64,14 @@ export function createAdminShellModule() {
       this.persistAdminSidebarState();
     },
 
+    toggleUserMenu() {
+      this.userMenuOpen = !this.userMenuOpen;
+    },
+
+    closeUserMenu() {
+      this.userMenuOpen = false;
+    },
+
     adminSidebarLabelClass() {
       return this.isAdminSidebarCollapsed ? "sr-only" : "";
     },
@@ -74,6 +82,7 @@ export function createAdminShellModule() {
 
     async handleAdminCompactLayoutChange(matches) {
       this.isAdminCompactLayout = Boolean(matches);
+      this.closeUserMenu();
       this.ensureAdminCompactTab(this.route?.name);
       await this.$nextTick();
       if (this.route?.name === "logs") {
@@ -316,6 +325,7 @@ export function createAdminShellModule() {
     },
 
     async logout() {
+      this.closeUserMenu();
       this.destroyLogsChart();
       this.stopSyncPolling();
       this.stopAssignmentsPolling();

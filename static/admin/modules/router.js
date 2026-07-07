@@ -54,7 +54,7 @@ function normalizedAssignmentSourceFilter(value) {
 }
 
 export const ADMIN_ROUTE_FRAGMENTS = {
-  login: { fragment: "/static/admin/pages/login.html", mountRef: "loginMount" },
+  login: { fragment: "/static/admin/pages/login.html?v=20260707-hermes-logo-crop", mountRef: "loginMount" },
   dashboard: { fragment: "/static/admin/pages/dashboard.html", mountRef: "pageMount" },
   quizzes: { fragment: "/static/admin/pages/quizzes.html", mountRef: "pageMount" },
   "quiz-detail": { fragment: "/static/admin/pages/quiz-detail.html", mountRef: "pageMount" },
@@ -231,6 +231,9 @@ export function createAdminRouterModule() {
     },
 
     async handleRoute(pathname, { replace = false } = {}) {
+      if (typeof this.closeUserMenu === "function") {
+        this.closeUserMenu();
+      }
       if (!this.session.authenticated && pathname !== "/admin/login") {
         this.destroyLogsChart();
         this.stopSyncPolling();

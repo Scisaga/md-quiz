@@ -87,28 +87,23 @@
   }
 
   .admin-r-login {
+    position: relative;
     display: grid;
     min-height: 100vh;
     place-items: center;
-    --s: 194px;
-    --c1: #eaf6ff;
-    --c2: #bde8dc;
-    --c3: #4f9289;
-    --_l: #0000 calc(25% / 3), var(--c1) 0 25%, #0000 0;
-    --_g: conic-gradient(from 120deg at 50% 87.5%, var(--c1) 120deg, #0000 0);
-    background:
-      var(--_g),
-      var(--_g) 0 calc(var(--s) / 2),
-      conic-gradient(from 180deg at 75%, var(--c2) 60deg, #0000 0),
-      conic-gradient(from 60deg at 75% 75%, var(--c1) 0 60deg, #0000 0),
-      linear-gradient(150deg, var(--_l)) 0 calc(var(--s) / 2),
-      conic-gradient(at 25% 25%, #0000 50%, var(--c2) 0 240deg, var(--c1) 0 300deg, var(--c2) 0),
-      linear-gradient(-150deg, var(--_l)) var(--c3);
-    background-size: calc(0.866 * var(--s)) var(--s);
+    overflow: hidden;
+    background-color: #0a0a0a;
+    background-image:
+      radial-gradient(ellipse at 20% 30%, rgba(56, 189, 248, 0.4) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(139, 92, 246, 0.3) 0%, transparent 70%),
+      radial-gradient(ellipse at 60% 20%, rgba(236, 72, 153, 0.25) 0%, transparent 50%),
+      radial-gradient(ellipse at 40% 80%, rgba(34, 197, 94, 0.2) 0%, transparent 65%);
     padding: 24px;
   }
 
   .admin-r-login__shell {
+    position: relative;
+    z-index: 2;
     display: grid;
     width: min(100%, 1040px);
     min-height: min(640px, calc(100vh - 48px));
@@ -480,8 +475,22 @@
     max-width: 100%;
     flex-wrap: wrap;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     margin-top: 12px;
+  }
+
+  .admin-public-invite__material-group {
+    display: inline-grid;
+    width: min(100%, 390px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    overflow: hidden;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.72) inset,
+      0 8px 22px rgba(37, 99, 235, 0.06);
   }
 
   .admin-public-invite__control {
@@ -506,6 +515,28 @@
       box-shadow 160ms ease,
       color 160ms ease,
       transform 160ms ease;
+  }
+
+  .admin-public-invite__material-control {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .admin-public-invite__material-control:first-child {
+    border-radius: 9px 0 0 9px;
+  }
+
+  .admin-public-invite__material-control:last-child {
+    border-radius: 0 9px 9px 0;
+  }
+
+  .admin-public-invite__material-control + .admin-public-invite__material-control {
+    border-left: 1px solid rgba(37, 99, 235, 0.12);
   }
 
   .admin-public-invite__control:hover {
@@ -542,11 +573,46 @@
     color: #475569;
   }
 
+  .admin-public-invite__material-control.admin-public-invite__control--inactive {
+    background: transparent;
+  }
+
+  .admin-public-invite__material-control.admin-public-invite__control--inactive:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--admin-ink);
+  }
+
   .admin-public-invite__control--active {
     border-color: rgba(16, 185, 129, 0.34);
     background: rgba(255, 255, 255, 0.96);
     color: #047857;
     box-shadow: 0 8px 18px rgba(16, 185, 129, 0.1);
+  }
+
+  .admin-public-invite__material-control.admin-public-invite__control--active {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 253, 245, 0.92));
+    box-shadow: 0 8px 18px rgba(16, 185, 129, 0.1);
+    z-index: 1;
+  }
+
+  .admin-public-invite__material-control.admin-public-invite__control--active::after {
+    position: absolute;
+    inset: -1px;
+    border: 2px solid rgba(16, 185, 129, 0.42);
+    border-radius: inherit;
+    content: "";
+    pointer-events: none;
+  }
+
+  .admin-public-invite__material-control:focus-visible {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.32) inset;
+  }
+
+  .admin-public-invite__material-control.admin-public-invite__control--active:focus-visible {
+    box-shadow:
+      0 0 0 2px rgba(37, 99, 235, 0.18) inset,
+      0 8px 18px rgba(16, 185, 129, 0.1);
   }
 
   .admin-public-invite__control--active:hover {

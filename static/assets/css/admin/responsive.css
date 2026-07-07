@@ -75,12 +75,28 @@
       gap: 6px;
     }
 
-    .admin-r-user-pill {
+    .admin-r-user-menu__button {
+      min-width: 0;
+      padding-inline: 10px;
+    }
+
+    .admin-r-user-menu__text {
+      max-width: 7.5rem;
+    }
+
+    .admin-r-user-menu__label {
       display: none;
     }
 
-    .admin-r-mobile-logout {
-      display: inline-flex;
+    .admin-r-user-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .admin-r-user-menu__panel {
+      right: 0;
+      width: min(220px, calc(100vw - 28px));
     }
 
     .admin-r-mobile-nav {

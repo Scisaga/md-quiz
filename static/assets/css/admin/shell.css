@@ -16,7 +16,25 @@
       linear-gradient(90deg, rgba(223, 234, 255, 0.88), rgba(248, 251, 255, 0.96) 48%, rgba(231, 247, 238, 0.88));
   }
 
+  html:has(.admin-r-login) {
+    overflow: hidden;
+    background: #0a0a0a;
+  }
+
+  html:has(.admin-r-login) body.admin-r-document {
+    overflow: hidden;
+    background: #0a0a0a;
+  }
+
   .admin-r-root {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+  }
+
+  .admin-r-login-frame {
+    position: relative;
+    z-index: 1;
     min-height: 100vh;
   }
 
@@ -249,43 +267,6 @@
     line-height: 1;
   }
 
-  .admin-r-sidebar-tools {
-    display: grid;
-    flex: 0 0 auto;
-    gap: 8px;
-    margin: 8px 12px 0;
-    border-top: 1px solid rgba(37, 99, 235, 0.1);
-    padding-top: 10px;
-  }
-
-  .admin-r-sidebar-tool {
-    display: inline-flex;
-    min-height: 38px;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border: 1px solid rgba(226, 232, 240, 0.95);
-    border-radius: 9px;
-    background: rgba(248, 250, 252, 0.78);
-    color: #64748b;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .admin-r-sidebar-tool .material-symbols-rounded {
-    font-weight: 300;
-    font-variation-settings:
-      "FILL" 0,
-      "wght" 300,
-      "GRAD" -25,
-      "opsz" 22;
-  }
-
-  .admin-r-sidebar-tool:hover {
-    background: rgba(255, 255, 255, 0.98);
-    color: var(--admin-ink);
-  }
-
   .admin-r-shell--collapsed .admin-r-brand {
     width: 48px;
     height: 48px;
@@ -320,8 +301,7 @@
     padding-inline: 10px;
   }
 
-  .admin-r-shell--collapsed .admin-r-nav__item,
-  .admin-r-shell--collapsed .admin-r-sidebar-tool {
+  .admin-r-shell--collapsed .admin-r-nav__item {
     justify-content: center;
     padding-inline: 0;
   }
@@ -444,8 +424,7 @@
   }
 
   .admin-r-health-pill,
-  .admin-r-user-pill,
-  .admin-r-mobile-logout {
+  .admin-r-user-menu__button {
     display: inline-flex;
     min-height: 32px;
     align-items: center;
@@ -473,8 +452,55 @@
     background: #22c55e;
   }
 
-  .admin-r-user-pill {
+  .admin-r-user-menu {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .admin-r-user-menu__button {
+    gap: 6px;
+    transition:
+      border-color 160ms ease,
+      background 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .admin-r-user-menu__button:hover,
+  .admin-r-user-menu__button:focus-visible {
+    border-color: rgba(37, 99, 235, 0.22);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+    color: var(--admin-ink);
+    outline: none;
+  }
+
+  .admin-r-user-menu__avatar,
+  .admin-r-user-menu__chevron,
+  .admin-r-user-menu__item .material-symbols-rounded {
+    flex: 0 0 auto;
+    width: 1em;
+    height: 1em;
+    font-size: 1em;
+    font-weight: 300;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 300,
+      "GRAD" -25,
+      "opsz" 20;
+    line-height: 1;
+  }
+
+  .admin-r-user-menu__text {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
     gap: 5px;
+  }
+
+  .admin-r-user-menu__label {
+    color: #526177;
   }
 
   .admin-r-user-name {
@@ -482,12 +508,74 @@
     font-weight: 560;
   }
 
-  .admin-r-mobile-logout {
-    display: none;
-    width: 34px;
-    justify-content: center;
-    padding: 0;
-    background: rgba(255, 255, 255, 0.88);
+  .admin-r-user-menu__panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 45;
+    width: min(240px, calc(100vw - 28px));
+    overflow: hidden;
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+    backdrop-filter: blur(18px);
+  }
+
+  .admin-r-user-menu__header {
+    display: grid;
+    gap: 4px;
+    border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+    padding: 12px 14px;
+  }
+
+  .admin-r-user-menu__eyebrow {
+    color: var(--admin-muted);
+    font-size: 12px;
+    font-weight: 560;
+    line-height: 1.2;
+  }
+
+  .admin-r-user-menu__account {
+    overflow: hidden;
+    color: var(--admin-ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 620;
+    line-height: 1.35;
+  }
+
+  .admin-r-user-menu__item {
+    display: flex;
+    width: 100%;
+    min-height: 40px;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    background: transparent;
+    padding: 10px 14px;
+    color: #526177;
+    font-size: 13px;
+    font-weight: 560;
+    text-align: left;
+  }
+
+  .admin-r-user-menu__item:hover,
+  .admin-r-user-menu__item:focus-visible {
+    background: rgba(248, 250, 252, 0.92);
+    color: var(--admin-ink);
+    outline: none;
+  }
+
+  .admin-r-user-menu__item--danger {
+    color: #be123c;
+  }
+
+  .admin-r-user-menu__item--danger:hover,
+  .admin-r-user-menu__item--danger:focus-visible {
+    background: rgba(255, 241, 242, 0.92);
+    color: #9f1239;
   }
 
   .admin-r-mobile-nav {
