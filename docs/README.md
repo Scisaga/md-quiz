@@ -3,6 +3,17 @@
 ## 产品与范围
 
 - [项目愿景](vision.md)
+- [平台化演进蓝图](product-platform-blueprint.md)
+- [轻量岗位测评与国内 / 国际推广策略](role-assessment-product-strategy.md)
+
+## 商业与参赛材料
+
+- [Goodwen 投资人与产品方案](biz/goodwen_2026/01_Goodwen_Investor_Product_Plan.md)
+- [GOAI AgentTeams 迭代方案](biz/goodwen_2026/02_GOAI_AgentTeams_Iteration_Plan.md)
+- [广州超级智能体大赛执行计划](biz/goodwen_2026/03_Guangzhou_Super_Agent_Execution_Plan.md)
+- [GOAI 执行计划](biz/goodwen_2026/04_GOAI_Execution_Plan.md)
+- [Goodwen SuperAgent 项目计划书（PDF）](biz/goodwen_2026/deliverables/Goodwen_SuperAgent_项目计划书.pdf)
+- [Goodwen SuperAgent 技术架构（PDF）](biz/goodwen_2026/deliverables/Goodwen_SuperAgent_技术架构.pdf)
 
 ## 协作约定
 
