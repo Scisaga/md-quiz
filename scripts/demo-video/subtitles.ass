@@ -1,0 +1,20 @@
+[Script Info]
+Title: MD Quiz 20 秒完整流程演示字幕
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Noto Sans CJK SC,48,&H00FFFFFF,&H000000FF,&H22000000,&HA6000000,-1,0,0,0,100,100,1,0,3,2,0,2,80,80,52,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.15,0:00:02.05,Default,,0,0,0,,安全登录，进入管理后台
+Dialogue: 0,0:00:02.35,0:00:04.40,Default,,0,0,0,,Dashboard 汇总关键业务指标
+Dialogue: 0,0:00:04.75,0:00:06.80,Default,,0,0,0,,试卷集中管理，状态与题量清晰可见
+Dialogue: 0,0:00:07.15,0:00:09.60,Default,,0,0,0,,题库版本与问卷结构，一屏掌握
+Dialogue: 0,0:00:09.95,0:00:12.80,Default,,0,0,0,,选择测验与候选人，快速生成邀约
+Dialogue: 0,0:00:13.15,0:00:16.20,Default,,0,0,0,,答题回放、自动评分与智能评价
+Dialogue: 0,0:00:16.55,0:00:19.80,Default,,0,0,0,,服务状态、调用量与趋势实时可见
