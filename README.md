@@ -4,12 +4,9 @@
 
 Goodwen 是面向智能体工作时代的提问与验证应用，`md-quiz` 是它当前开源的 MVP 与执行运行时。它把 QML 问卷、Git 版本、邀约、作答、评分、结果留档和后台运维放在同一套系统中，既可以由负责人直接使用，也可以通过 MCP 接受 Agent 调用。
 
-<video controls muted playsinline preload="metadata" width="100%">
-  <source src="img/md-quiz-demo-20s.mp4" type="video/mp4">
-  当前浏览器不支持内嵌视频播放。
-</video>
+[![Goodwen / MD Quiz 20 秒界面演示](img/md-quiz-demo-20s.webp)](img/md-quiz-demo-20s.mp4)
 
-[▶ 查看 20 秒界面演示](img/md-quiz-demo-20s.mp4)
+[▶ 查看高清 MP4](img/md-quiz-demo-20s.mp4)
 
 ## 它解决什么问题
 
