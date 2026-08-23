@@ -253,7 +253,6 @@ ALIYUN_PNVS_TEMPLATE_CODE=<短信模板 ID>
 
 ## 参考文档
 
-- [Goodwen 项目简介](docs/biz/goodwen_2026/goodwen_2006_intro.md)
 - [文档导航](docs/README.md)
 - [架构总览](docs/architecture/overview.md)
 - [运行拓扑](docs/architecture/runtime-topology.md)
